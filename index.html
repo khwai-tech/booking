@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Housie Pro — Smart Booking System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <style>
+    /* ─── 🎨 MULTI-THEME ENGINE ─────────────────────────────────────────── */
+    :root {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #1e2530; --bg4: #252d3a;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.12);
+      --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+      --accent: #7c3aed; --accent2: #9f67ff; --accentBg: rgba(124,58,237,0.15);
+      --green: #22c55e; --greenBg: rgba(34,197,94,0.15);
+      --blue: #3b82f6; --blueBg: rgba(59,130,246,0.15);
+      --orange: #f59e0b; --orangeBg: rgba(245,158,11,0.15);
+      --red: #ef4444; --redBg: rgba(239,68,68,0.12);
+      --purple: #a855f7; --purpleBg: rgba(168,85,247,0.15);
+      --radius: 12px; --radius-sm: 8px; --radius-xs: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font: 'Plus Jakarta Sans', sans-serif; --mono: 'DM Mono', monospace;
+      --sidebar-w: 240px;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc; --bg2: #ffffff; --bg3: #f1f5f9; --bg4: #e2e8f0;
+      --border: #e2e8f0; --border2: #cbd5e1;
+      --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+      --shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    [data-theme="midnight"] {
+      --bg: #000000; --bg2: #0a0a0a; --bg3: #141414; --bg4: #1f1f1f;
+      --border: #222222; --border2: #333333;
+      --accent: #3b82f6; --accent2: #60a5fa; --accentBg: rgba(59,130,246,0.15);
+    }
+    [data-theme="slate"] {
+      --bg: #0f172a; --bg2: #1e293b; --bg3: #334155; --bg4: #475569;
+      --border: #334155; --border2: #475569;
+      --text: #f8fafc; --text2: #cbd5e1; --text3: #94a3b8;
+    }
+
+    /* ─── RESET & TYPOGRAPHY ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+    h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+    /* ─── LAYOUT ──────────────────────────────────────────────── */
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; z-index: 100; padding: 0 0 20px; transition: transform 0.3s ease; }
+    .sidebar-logo { padding: 20px 18px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #b24bff); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 20px rgba(124,58,237,0.4); flex-shrink: 0; }
+    .logo-text strong { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+    .logo-text strong span { color: var(--accent2); }
+    
+    .sidebar-nav { flex: 1; padding: 16px 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;}
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; transition: all 0.2s; font-size: 13.5px; font-weight: 600; }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: var(--accentBg); color: var(--accent2); }
+    .nav-item svg { width: 18px; height: 18px; stroke-width: 2.2; opacity: 0.8; }
+    .sidebar-footer { padding: 14px 12px; border-top: 1px solid var(--border); }
+
+    .main-wrapper { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left 0.3s ease; }
+    
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+    .btn-ghost { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { background: var(--bg4); color: var(--text); }
+    .btn-danger { background: var(--redBg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+    
+    .page-content { flex: 1; padding: 32px 30px; display: none; }
+    .page-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap; gap: 10px; }
+    .section-title { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    
+    .mobile-menu-btn { display: none; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-xs); cursor: pointer; padding: 6px; margin-right: 10px; align-items: center; justify-content: center;}
+
+    /* ─── DASHBOARD STATS & EVENT CARDS ──────────────────────────────── */
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+    .stat-card-header { display: flex; align-items: center; justify-content: space-between; color: var(--text2); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .stat-card-val { font-size: 26px; font-weight: 800; color: var(--text); }
+    
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .event-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+    .event-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: var(--shadow); }
+    .event-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .event-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent2); background: var(--accentBg); }
+    .event-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .event-date { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+    
+    /* ─── UI CARDS & PANELS ────────────────────────────────────────────── */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; margin-bottom: 16px;}
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-content { padding: 16px; }
+
+    /* ─── TICKET GRID & POS ────────────────────────────────────────────── */
+    .pos-layout { display: flex; flex-direction: column; gap: 20px; align-items: stretch; }
+    
+    .ticket-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: var(--text2); font-weight: 600; background: var(--bg3); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border2);}
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+    .ld-open { background: var(--bg4); border: 1px solid var(--border2); }
+    .ld-advanced { background: var(--orangeBg); border: 1px solid var(--orange); }
+    .ld-booked { background: var(--blueBg); border: 1px solid var(--blue); }
+    .ld-paid { background: var(--greenBg); border: 1px solid var(--green); }
+    .ld-selected { background: var(--purpleBg); border: 2px solid var(--purple); }
+
+    .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;}
+    .tab-btn { padding: 6px 14px; background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-family: var(--font); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .tab-btn.active { background: var(--accentBg); color: var(--accent2); border-color: var(--accent); }
+    
+    /* ─── TICKET GRID — UPGRADED ──────────────────────────────────────── */
+
+    /* 1. Flex-wrap grid: reflows naturally at every viewport width */
+    .ticket-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 4px 0 4px 2px;
+        margin-bottom: 20px;
+        /* no fixed columns, no horizontal scroll */
+    }
+
+    /* 2. Box size: 48×48 touch-friendly, clamp for fluid sizing */
+    .ticket-box {
+        width: clamp(40px, 5vw, 48px);
+        height: clamp(40px, 5vw, 48px);
+        border-radius: var(--radius-xs);
+        display: flex; align-items: center; justify-content: center;
+        font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+        border: 1.5px solid transparent;
+        flex-shrink: 0;
+        position: relative;
+        user-select: none;
+    }
+    .ticket-box:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 5; }
+
+    /* Status colors unchanged */
+    .ticket-box.t-open     { background: var(--bg3);     color: var(--text2);   border-color: var(--border2); }
+    .ticket-box.t-advanced { background: var(--orangeBg); color: var(--orange);  border-color: rgba(245,158,11,0.35); }
+    .ticket-box.t-booked   { background: var(--blueBg);   color: var(--blue);    border-color: rgba(59,130,246,0.35); }
+    .ticket-box.t-paid     { background: var(--greenBg);  color: var(--green);   border-color: rgba(34,197,94,0.35); }
+
+    /* 3. Selected: ring instead of scale — no layout shift, no neighbor overlap */
+    .ticket-box.t-selected {
+        background: var(--purpleBg);
+        color: var(--purple);
+        border-color: var(--purple);
+        box-shadow: 0 0 0 2.5px var(--purple), 0 0 10px rgba(168,85,247,0.35);
+        font-weight: 800;
+        /* NO transform: scale() */
+    }
+
+    /* 4. Row-of-10 grouping gap — added via JS class */
+    .ticket-box.row-gap-right { margin-right: 14px; }
+
+    /* 5. Group-border wrapper for Pair / Half Set / Full Set */
+    .ticket-group {
+        display: flex;
+        gap: 5px;
+        border: 1.5px dashed var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 4px;
+        transition: border-color 0.2s;
+        position: relative;
+    }
+    .ticket-group:hover { border-color: var(--accent); }
+    /* tiny group label */
+    .ticket-group-label {
+        position: absolute;
+        top: -8px; left: 50%; transform: translateX(-50%);
+        font-size: 8.5px; font-weight: 700;
+        background: var(--bg2); color: var(--text3);
+        padding: 0 4px; border-radius: 3px;
+        white-space: nowrap;
+        display: none;
+    }
+    .ticket-group:hover .ticket-group-label { display: block; }
+
+    /* 6. Skeleton loading boxes */
+    .ticket-skeleton {
+        width: clamp(40px, 5vw, 48px);
+        height: clamp(40px, 5vw, 48px);
+        border-radius: var(--radius-xs);
+        background: var(--bg3);
+        border: 1.5px solid var(--border);
+        flex-shrink: 0;
+        animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-pulse {
+        0%, 100% { opacity: 0.5; }
+        50%       { opacity: 1; }
+    }
+
+    /* 7. Tooltip: smarter positioning — flip upward only if near bottom */
+    .tooltip-text {
+        visibility: hidden;
+        width: 148px;
+        background: var(--bg4);
+        color: var(--text);
+        text-align: center;
+        border-radius: 7px;
+        padding: 8px 10px;
+        position: absolute;
+        z-index: 20;
+        /* default: show above */
+        bottom: calc(100% + 7px);
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.15s;
+        font-size: 11px;
+        border: 1px solid var(--border2);
+        pointer-events: none;
+        white-space: pre-wrap;
+        font-family: var(--font);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        line-height: 1.6;
+    }
+    /* Arrow pointing down (tooltip above box) */
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%; left: 50%; transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: var(--border2);
+    }
+    .ticket-box:hover .tooltip-text { visibility: visible; opacity: 1; }
+    /* For boxes near the top of the grid, flip tooltip below */
+    .ticket-box.tooltip-below .tooltip-text {
+        bottom: auto;
+        top: calc(100% + 7px);
+    }
+    .ticket-box.tooltip-below .tooltip-text::after {
+        top: auto; bottom: 100%;
+        border-top-color: transparent;
+        border-bottom-color: var(--border2);
+    }
+
+    /* ─── LEDGER & CUSTOMERS TABLE ─────────────────────────────────────────────────── */
+    .ledger-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; background: var(--bg3); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border2);}
+    .data-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    thead th { background: var(--bg4); color: var(--text3); padding: 12px; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-weight: 600;}
+    tbody td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+    tbody tr:hover td { background: var(--bg3); }
+    .status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .sb-paid { background: var(--greenBg); color: var(--green); }
+    .sb-booked { background: var(--blueBg); color: var(--blue); }
+    .sb-advanced { background: var(--orangeBg); color: var(--orange); }
+
+    /* ─── FORMS & INPUTS ───────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text3); font-weight: 600; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font); font-size: 13px; outline: none; transition: border-color 0.2s; }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accentBg); }
+    .theme-selector { width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; outline: none; }
+
+    /* ─── MODALS ───────────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+    .modal-box { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+    .error-msg { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 13px; font-weight: 600; margin-bottom: 16px; display: none;}
+
+    /* ─── LOGIN PAGE ───────────────────────────────────────────────────── */
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 999; background: radial-gradient(circle at top right, var(--accentBg), var(--bg)), radial-gradient(circle at bottom left, var(--blueBg), var(--bg)); }
+    .login-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 24px 60px rgba(0,0,0,0.5); position: relative; overflow: hidden;}
+    .login-card::before { content:''; position: absolute; top:0; left:0; right:0; height:4px; background: linear-gradient(90deg, var(--accent), var(--blue)); }
+
+    #loadingSpinner { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border: 4px solid var(--bg3); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; z-index: 1001; }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    /* ─── EXPORT GRID STYLES (HIDDEN) ─────────────────────────────────── */
+    #exportGridContainer { position: fixed; left: -9999px; top: 0; width: 850px; background: white; padding: 20px; color: black; font-family: Arial, sans-serif; box-sizing: border-box; }
+    .export-grid { display: grid; grid-template-columns: repeat(15, 1fr); border: 2px solid #000; background: #000; gap: 1px; }
+    .export-cell { background: #fff; text-align: center; font-size: 14px; font-weight: bold; padding: 5px 0; }
+    .export-booked { background: #194a8d; color: #fff; }
+    .export-footer { text-align: center; font-size: 11px; margin-top: 10px; font-weight: bold; }
+
+    .floating-book-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(124,58,237,0.5); z-index: 950; padding: 0; transition: transform 0.2s, box-shadow 0.2s; }
+    .floating-book-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(124,58,237,0.6); }
+    .floating-book-btn svg { width: 26px; height: 26px; margin: 0; }
+
+    /* ─── RESPONSIVE DESIGN ──────────────────────────────── */
+    @media (max-width: 1024px) {
+        .sidebar { transform: translateX(-100%); }
+        .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        .main-wrapper { margin-left: 0; }
+        .mobile-menu-btn { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loadingSpinner"></div>
+
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="margin: 0 auto 16px; width: 64px; height: 64px; font-size: 32px; border-radius: 16px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; color: white;">
+        <i data-lucide="crown"></i>
+      </div>
+      <h2 style="font-size: 24px;">HOUSIE <span style="color: var(--accent2)">PRO</span></h2>
+      <p style="color: var(--text3); font-size: 13px; margin-top: 4px;">Smart Booking Architecture</p>
+    </div>
+    
+    <div class="form-group" style="margin-bottom: 16px;">
+      <select id="staffLoginSelect" class="form-input" style="padding: 12px 14px;">
+        <option value="Admin">Admin</option>
+        <option value="Staff 1">Staff 1</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom: 16px;">
+      <input type="password" id="staffLoginPin" class="form-input" placeholder="Enter PIN" maxlength="4" style="padding: 12px 14px;" />
+    </div>
+    
+    <div id="loginError" class="error-msg"></div>
+    
+    <button id="loginBtn" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 15px;">
+      Authenticate <i data-lucide="arrow-right"></i>
+    </button>
+  </div>
+</div>
+
+<div id="appShell" style="display:none; width:100%;">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i data-lucide="crown"></i></div>
+      <div class="logo-text">
+        <strong>HOUSIE <span>PRO</span></strong>
+        <small>Control Panel</small>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" id="navDashboardBtn">
+        <i data-lucide="layout-dashboard"></i> Dashboard
+      </div>
+      <div class="nav-item" id="navCustomersBtn">
+        <i data-lucide="users"></i> Customers
+      </div>
+      <div class="nav-item" id="navSettingsBtn">
+        <i data-lucide="settings"></i> Settings
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+        <span id="loggedInStaffDisplay" style="display:block; text-align:center; font-weight: 600; font-size: 13px; color: var(--text2); margin-bottom: 10px;"></span>
+        <button class="btn btn-ghost" id="logoutBtn" style="width: 100%;">
+            <i data-lucide="log-out"></i> Logout
+        </button>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+
+    <div id="dashboardPage" class="page-content active">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            Overview
+        </div>
+        <button class="btn btn-primary" id="topbarCreateEventBtn">
+            <i data-lucide="plus"></i> Create Event
+        </button>
+      </div>
+      
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-card-header">Total Revenue <i data-lucide="indian-rupee"></i></div>
+          <div class="stat-card-val" id="dashTotalRevenue">₹0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">Total Tickets Sold <i data-lucide="ticket"></i></div>
+          <div class="stat-card-val" id="dashTotalSold">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">Active Events <i data-lucide="calendar"></i></div>
+          <div class="stat-card-val" id="dashTotalEvents">0</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top: 32px; margin-bottom: 16px;">
+        <div class="section-title" style="font-size: 18px;">Active Events</div>
+      </div>
+      <div id="eventCardsGrid" class="events-grid">
+        <p style="grid-column: 1 / -1; color: var(--text3);">Loading available events...</p>
+      </div>
+    </div>
+
+    <div id="customersPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            Customers Directory
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-content">
+          <div class="data-table-wrap">
+            <table id="customersTable">
+              <thead>
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Phone Number</th>
+                  <th>Total Tickets Bought</th>
+                  <th>Total Lifetime Value</th>
+                </tr>
+              </thead>
+              <tbody id="customersTableBody">
+                 <tr><td colspan="4" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            Platform Settings
+        </div>
+      </div>
+      <div class="card" style="max-width: 600px;">
+        <div class="card-header"><div class="card-title"><i data-lucide="palette"></i> Appearance</div></div>
+        <div class="card-content">
+          <div class="form-group">
+            <label>Interface Theme</label>
+            <select id="themeSelector" class="theme-selector">
+              <option value="dark">🌙 Dark Theme (Default)</option>
+              <option value="light">☀️ Light Theme</option>
+              <option value="midnight">🌌 Midnight (OLED)</option>
+              <option value="slate">🏢 Slate Pro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="posPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+          <button class="btn btn-ghost" id="backBtn" style="padding: 8px; border: none;"><i data-lucide="arrow-left"></i></button>
+          <span id="posTitle">Booking</span>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-ghost" id="openBatchBtn" style="color: var(--text);">
+                <i data-lucide="scan-line"></i> Import / OCR
+            </button>
+            <button class="btn btn-primary" id="shareGridBtn" style="background: #25D366; color: white;">
+                <i data-lucide="share-2"></i> WhatsApp Grid
+            </button>
+            <button class="btn btn-danger" id="deleteEventBtn"><i data-lucide="trash-2"></i> Delete</button>
+        </div>
+        
+        <button id="floatingBookBtn" class="btn btn-primary floating-book-btn" style="display: none;">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+
+      <div class="pos-layout">
+        
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="grid-3x3"></i> Ticket Selection</div>
+          </div>
+          <div class="card-content">
+             
+             <div class="ticket-legend">
+               <div class="legend-item"><div class="legend-dot ld-open"></div> Available</div>
+               <div class="legend-item"><div class="legend-dot ld-advanced"></div> Advanced</div>
+               <div class="legend-item"><div class="legend-dot ld-booked"></div> Booked</div>
+               <div class="legend-item"><div class="legend-dot ld-paid"></div> Paid</div>
+               <div class="legend-item"><div class="legend-dot ld-selected"></div> Selected</div>
+             </div>
+
+             <div class="filter-tabs">
+                <button class="tab-btn active" data-filter="all">Individual (15)</button>
+                <button class="tab-btn" data-filter="twoTicket">Pair (2)</button>
+                <button class="tab-btn" data-filter="halfSet">Half Set (3)</button>
+                <button class="tab-btn" data-filter="set">Full Set (6)</button>
+             </div>
+             
+             <div id="ticketGrid" class="ticket-grid"></div>
+
+             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                 <p style="font-size: 14px; font-weight: 600; color: var(--text);">
+                     Selected Tickets: <span id="selectedCount" style="color: var(--accent2); font-size: 18px; font-weight: 800;">0</span>
+                 </p>
+                 <button class="btn btn-primary" id="openBookingModalBtn" style="padding: 10px 24px; font-size: 14px; display: none;">
+                     Book Now <i data-lucide="arrow-right"></i>
+                 </button>
+             </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="list"></i> Live Booking Ledger</div>
+          </div>
+          <div class="card-content">
+            <div class="ledger-controls">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 600; font-size: 13px; color: var(--accent2);">
+                <input type="checkbox" id="combineNamesToggle" style="accent-color: var(--accent); width: 16px; height: 16px;">
+                Combine Bookings by Name
+              </label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: var(--text3); font-weight: 600;">Sort By:</span>
+                <select id="ledgerSortSelect" class="form-input" style="padding: 8px 12px; width: auto;">
+                  <option value="number">Ticket Number</option>
+                  <option value="name">Customer Name</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+            </div>
+            <div class="data-table-wrap">
+              <table id="ledgerTable">
+                <thead>
+                  <tr>
+                    <th data-label="Ticket(s)">Ticket(s)</th>
+                    <th data-label="Name">Name</th>
+                    <th data-label="Phone">Phone</th>
+                    <th data-label="Status">Status</th>
+                    <th data-label="Payment">Payment</th>
+                    <th data-label="Amount">Amount</th>
+                    <th data-label="Action" style="text-align: center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ledgerTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="batchModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 600px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px;"><i data-lucide="scan-line"></i> Batch Import & OCR</h2>
+      <button class="btn btn-ghost" id="closeBatchModalBtn" style="padding: 4px;"><i data-lucide="x"></i></button>
+    </div>
+    
+    <div class="form-group" style="background: var(--bg3); padding: 16px; border-radius: var(--radius-sm); border: 1px dashed var(--border2); text-align: center;">
+      <label style="margin-bottom: 10px;">Upload Ticket Chart Image</label>
+      <input type="file" id="ocrImageInput" accept="image/*" style="color: var(--text2); font-size: 12px; width: 100%;">
+      <p id="ocrStatus" style="font-size: 12px; color: var(--accent2); margin-top: 10px; font-weight: 600;"></p>
+    </div>
+
+    <div class="form-group">
+      <label>Parsed Ticket Numbers (Comma-separated)</label>
+      <textarea id="batchTicketNumbers" class="form-input" rows="4" placeholder="Upload an image above, or paste numbers directly here..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Customer Name for Bulk Batch:</label>
+      <input type="text" id="batchCustomerName" class="form-input" placeholder="e.g., WhatsApp Group Bulk">
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+      <button class="btn btn-primary" id="confirmBatchBtn"><i data-lucide="check-circle"></i> Complete Batch Booking</button>
+    </div>
+  </div>
+</div>
+
+<div id="createSheetModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 400px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="font-size: 18px; margin: 0;">Create New Event</h2>
+      <button class="btn btn-ghost" id="closeCreateSheetModal" style="padding: 4px;"><i data-lucide="x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Event Name (No spaces):</label>
+      <input type="text" id="newSheetNameInput" class="form-input" placeholder="e.g., SUMMER_FESTIVAL" required>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+      <button class="btn btn-ghost" id="cancelCreateSheetBtn">Cancel</button>
+      <button class="btn btn-primary" id="confirmCreateSheetBtn">Create Event</button>
+    </div>
+  </div>
+</div>
+
+<div id="bookingModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 500px; padding: 28px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="ticket"></i> Book Tickets
+      </h2>
+      <button class="btn btn-ghost" id="closeBookingModal" style="padding: 4px; border: none;"><i data-lucide="x"></i></button>
+    </div>
+    
+    <div style="background: var(--bg3); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border2); margin-bottom: 20px;">
+      <p style="font-size: 13px; color: var(--text2); margin-bottom: 6px; margin-top: 0;">Event: <strong style="color: var(--text);" id="currentBookingSheet"></strong></p>
+      <p style="font-size: 13px; color: var(--text2); margin: 0;">Selected: <strong style="color: var(--accent2); font-family: var(--mono);" id="ticketsToBookDisplay"></strong></p>
+    </div>
+
+    <div class="form-group">
+        <label for="manualTicketNumbers">Manual Ticket Entry (comma-separated):</label>
+        <textarea id="manualTicketNumbers" class="form-input" rows="2" placeholder="e.g., 1, 5, 12"></textarea>
+    </div>
+
+    <div class="radio-group" style="margin-top: 15px; margin-bottom: 20px;">
+        <label style="display: block; font-size: 12px; color: var(--text3); font-weight: 600; margin-bottom: 8px;">Initial Ticket Status:</label>
+        <div class="checkbox-group" style="display: flex; gap: 16px; flex-wrap: wrap; background: var(--bg3); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border2);">                    
+            <label class="radio-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 600;">
+                <input type="radio" name="initialStatus" value="Booked" checked style="accent-color: var(--blue); transform: scale(1.2);"> Booked
+            </label>
+            <label class="radio-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 600;">
+                <input type="radio" name="initialStatus" value="Advanced" style="accent-color: var(--orange); transform: scale(1.2);"> Advanced
+            </label>
+            <label class="radio-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 13px; font-weight: 600;">
+                <input type="radio" name="initialStatus" value="Paid" style="accent-color: var(--green); transform: scale(1.2);"> Paid
+            </label>                    
+            <label id="removeBookingWrapper" class="radio-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--red); font-size: 13px; font-weight: 700; margin-left: auto;">
+                <input type="radio" name="initialStatus" value="Open" style="accent-color: var(--red); transform: scale(1.2);"> Remove Booking
+            </label>                   
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="fullName">Full Name:</label>
+        <input type="text" id="fullName" class="form-input" required>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+            <label for="phoneNumber">Phone Number:</label>
+            <input type="tel" id="phoneNumber" class="form-input" placeholder="e.g., 9876543210">
+        </div>
+        <div class="form-group">
+            <label for="paymentMode">Payment Mode:</label>
+            <select id="paymentMode" class="form-input">
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="amount">Total Amount (₹):</label>
+        <input type="number" id="amount" class="form-input" step="0.01" min="0" placeholder="0.00">
+    </div>
+    
+    <div id="bookingFormError" class="error-msg"></div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px;">
+        <button class="btn btn-ghost" id="cancelBookingBtn">Cancel</button>
+        <button class="btn btn-primary" id="confirmBookingBtn"><i data-lucide="check-circle"></i> Confirm Booking</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── INITIALIZATION ───
+lucide.createIcons();
+
+// ⚠️ IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ⚠️
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKv5kxLErjM8dqOcMpaRlX4PjllKXsQjIwewIvbyOFCRAvkC3l2ClHEMYJ5V5aQ937/exec';
+
+const appState = { staffName: null, activeEvent: null, tickets: [], selectedTickets: [], currentFilter: 'all' };
+
+// ─── THEME ───
+const savedTheme = localStorage.getItem('housie_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+const themeSelector = document.getElementById('themeSelector');
+if (themeSelector) themeSelector.value = savedTheme;
+
+themeSelector.addEventListener('change', (e) => {
+    const newTheme = e.target.value;
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('housie_theme', newTheme);
+});
+
+// ─── PAGE NAVIGATION ───
+function showPage(pageId) {
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
+    if(pageId === 'dashboardPage') document.getElementById('navDashboardBtn').classList.add('active');
+    if(pageId === 'customersPage') document.getElementById('navCustomersBtn').classList.add('active');
+    if(pageId === 'settingsPage') document.getElementById('navSettingsBtn').classList.add('active');
+}
+function showSpinner() { document.getElementById('loadingSpinner').style.display = 'block'; }
+function hideSpinner() { document.getElementById('loadingSpinner').style.display = 'none'; }
+
+// ─── 📡 API CONNECTION TOOL ───
+async function fetchAPI(action, payload = {}) {
+    payload.action = action;
+    try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            redirect: "follow", 
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        return data;
+    } catch (error) {
+        alert("API Error: " + error.message);
+        hideSpinner();
+        throw error;
+    }
+}
+
+// ─── 🔐 SECURE LOGIN LOGIC ───
+document.getElementById('loginBtn').addEventListener('click', async () => {
+    const user = document.getElementById('staffLoginSelect').value;
+    const pin = document.getElementById('staffLoginPin').value;
+    const err = document.getElementById('loginError');
+    
+    if(!pin) {
+        err.innerText = "Please enter a PIN.";
+        err.style.display = 'block';
+        return;
+    }
+
+    showSpinner();
+    try {
+        // ✨ NEW: Sending the login check securely to the Google Apps Script Backend!
+        await fetchAPI('authenticate', { user: user, pin: pin });
+        
+        appState.staffName = user;
+        document.getElementById('loggedInStaffDisplay').innerText = `👋 ${user}`;
+        err.style.display = 'none';
+        
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('appShell').style.display = 'flex';
+        
+        showPage('dashboardPage');
+        loadEventsFromBackend();
+    } catch (error) {
+        err.innerText = "Invalid PIN. Access Denied.";
+        err.style.display = 'block';
+    }
+    hideSpinner();
+});
+document.getElementById('staffLoginPin').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    appState.staffName = null; 
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('staffLoginPin').value = '';
+});
+
+// ─── NAVIGATION HANDLERS ───
+document.getElementById('navDashboardBtn').addEventListener('click', () => { showPage('dashboardPage'); loadEventsFromBackend(); });
+document.getElementById('navCustomersBtn').addEventListener('click', () => { showPage('customersPage'); loadCustomers(); });
+document.getElementById('navSettingsBtn').addEventListener('click', () => { showPage('settingsPage'); });
+
+// ─── 📅 DASHBOARD: EVENT HUB & STATS ───
+async function loadEventsFromBackend() {
+    showSpinner();
+    const data = await fetchAPI('getAvailableEvents');
+    hideSpinner();
+    
+    const grid = document.getElementById('eventCardsGrid');
+    grid.innerHTML = ''; 
+
+    let totalEvents = data.events.length;
+    let totalSold = 0;
+    let realRevenue = 0; 
+    
+    if (totalEvents === 0) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; color: var(--text3); text-align: center; padding: 40px;">No active events found. Click Create Event to begin.</p>';
+        document.getElementById('dashTotalEvents').innerText = "0";
+        document.getElementById('dashTotalSold').innerText = "0";
+        document.getElementById('dashTotalRevenue').innerText = "₹0";
+        return;
+    }
+
+    data.events.forEach(event => {
+        const cleanName = event.name.replace('BOOK_', '');
+        const ticketsSold = 600 - event.openCount;
+        totalSold += ticketsSold;
+        realRevenue += (event.revenue || 0);
+
+        const card = document.createElement('div');
+        card.className = 'event-card';
+        card.innerHTML = `
+          <div class="event-card-header">
+            <div class="event-icon"><i data-lucide="ticket"></i></div>
+            <span style="font-size: 11px; font-weight: 700; background: var(--blueBg); color: var(--blue); padding: 4px 10px; border-radius: 999px;">${event.openCount} Open</span>
+          </div>
+          <div class="event-name">${cleanName}</div>
+          <div class="event-date"><i data-lucide="calendar"></i> 600 Capacity | ${ticketsSold} Sold</div>
+        `;
+        card.onclick = () => selectEvent(event.name);
+        grid.appendChild(card);
+    });
+    
+    document.getElementById('dashTotalEvents').innerText = totalEvents;
+    document.getElementById('dashTotalSold').innerText = totalSold.toLocaleString();
+    document.getElementById('dashTotalRevenue').innerText = `₹${realRevenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`; 
+    lucide.createIcons();
+}
+
+// ─── 👥 CUSTOMERS DIRECTORY ───
+async function loadCustomers() {
+    showSpinner();
+    const tbody = document.getElementById('customersTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>';
+    
+    try {
+        const data = await fetchAPI('getAllCustomers');
+        hideSpinner();
+        
+        tbody.innerHTML = '';
+        if(data.customers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text3);">No customers found across active events.</td></tr>';
+            return;
+        }
+        
+        data.customers.sort((a,b) => b.spent - a.spent);
+
+        data.customers.forEach(cust => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${cust.name}</strong></td>
+                <td style="font-family: var(--mono); color: var(--text3);">${cust.phone || '-'}</td>
+                <td><span style="background: var(--blueBg); color: var(--blue); padding: 2px 8px; border-radius: 4px; font-weight: 600;">${cust.tickets}</span></td>
+                <td style="color: var(--green); font-weight: 700;">₹${cust.spent.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--red);">Failed to load customers.</td></tr>';
+        hideSpinner();
+    }
+}
+
+// ─── 📝 MODAL: CREATE EVENT ───
+const createModal = document.getElementById('createSheetModal');
+document.getElementById('topbarCreateEventBtn').addEventListener('click', () => {
+    document.getElementById('newSheetNameInput').value = '';
+    createModal.classList.add('open');
+});
+document.getElementById('cancelCreateSheetBtn').addEventListener('click', () => createModal.classList.remove('open'));
+document.getElementById('closeCreateSheetModal').addEventListener('click', () => createModal.classList.remove('open'));
+
+document.getElementById('confirmCreateSheetBtn').addEventListener('click', async () => {
+    let newName = document.getElementById('newSheetNameInput').value.trim().replace(/\s+/g, '_').toUpperCase();
+    if(!newName) return alert('Enter a valid name');
+    if(!newName.startsWith('BOOK_')) newName = 'BOOK_' + newName;
+
+    createModal.classList.remove('open');
+    showSpinner();
+    
+    await fetchAPI('createNewEventSheet', { sheetName: newName, staffName: appState.staffName });
+    if(document.getElementById('dashboardPage').classList.contains('active')) {
+        loadEventsFromBackend(); 
+    } else {
+        hideSpinner();
+    }
+});
+
+// ─── 🤖 BATCH IMPORT & OCR LOGIC ───
+const batchModal = document.getElementById('batchModal');
+document.getElementById('openBatchBtn').addEventListener('click', () => {
+    document.getElementById('ocrImageInput').value = '';
+    document.getElementById('batchTicketNumbers').value = '';
+    document.getElementById('batchCustomerName').value = '';
+    document.getElementById('ocrStatus').innerText = '';
+    batchModal.classList.add('open');
+});
+document.getElementById('closeBatchModalBtn').addEventListener('click', () => batchModal.classList.remove('open'));
+
+// Trigger Tesseract OCR on image upload
+document.getElementById('ocrImageInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const statusText = document.getElementById('ocrStatus');
+    statusText.innerText = "⏳ Scanning image with AI...";
+    statusText.style.color = "var(--orange)";
+    
+    try {
+        const worker = await Tesseract.createWorker('eng');
+        const ret = await worker.recognize(file);
+        const text = ret.data.text;
+        
+        // Extract all numbers between 1 and 600
+        let nums = text.match(/\b\d+\b/g) || [];
+        nums = nums.map(Number).filter(n => n >= 1 && n <= 600);
+        
+        // Remove duplicates and sort sequentially
+        nums = [...new Set(nums)].sort((a,b) => a - b);
+        
+        document.getElementById('batchTicketNumbers').value = nums.join(', ');
+        statusText.innerText = `✅ Found ${nums.length} valid tickets in image!`;
+        statusText.style.color = "var(--green)";
+        await worker.terminate();
+    } catch (error) {
+        statusText.innerText = "❌ OCR Failed. Please manually type the numbers.";
+        statusText.style.color = "var(--red)";
+    }
+});
+
+// Process Batch Submission
+document.getElementById('confirmBatchBtn').addEventListener('click', async () => {
+    const rawData = document.getElementById('batchTicketNumbers').value;
+    const customer = document.getElementById('batchCustomerName').value.trim() || "Batch Import";
+    
+    let ticketsToBook = rawData.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    if(ticketsToBook.length === 0) return alert("No valid tickets to batch book.");
+    
+    batchModal.classList.remove('open');
+    showSpinner();
+    try {
+        await fetchAPI('bookTickets', {
+            eventName: appState.activeEvent,
+            tickets: ticketsToBook,
+            status: "Booked", // Defaults batch imports to Booked
+            customer: customer,
+            phone: "",
+            payment: "Cash",
+            amount: 0,
+            staffName: appState.staffName
+        });
+        selectEvent(appState.activeEvent); 
+    } catch (error) {
+        alert("Batch booking failed.");
+        hideSpinner();
+    }
+});
+
+
+// ─── 🎟️ POS & TICKET GRID ───
+async function selectEvent(eventName) {
+    appState.activeEvent = eventName;
+    document.getElementById('posTitle').innerText = eventName.replace('BOOK_', '');
+    showPage('posPage');
+    
+    showSpinner();
+    const data = await fetchAPI('getTicketsForEvent', { sheetName: eventName });
+    hideSpinner();
+    
+    appState.tickets = data.tickets;
+    appState.selectedTickets = [];
+    appState.currentFilter = 'all';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-btn[data-filter="all"]').classList.add('active');
+    
+    renderTicketGrid();
+}
+document.getElementById('backBtn').addEventListener('click', () => { showPage('dashboardPage'); loadEventsFromBackend(); });
+
+function renderTicketGrid() {
+    const grid = document.getElementById('ticketGrid');
+    grid.innerHTML = '';
+    
+    const filter = appState.currentFilter;
+
+    // ✨ FIXED: "Individual" view now rigidly locks into exactly 15 Columns!
+    if (filter === 'all') {
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(15, 1fr)';
+        grid.style.gap = '4px'; 
+    } else {
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(12, max-content)';
+        grid.style.gap = '6px';
+        grid.style.justifyContent = 'start';
+    }
+    
+    appState.tickets.forEach((ticket, index) => {
+        const box = document.createElement('div');
+        box.className = `ticket-box status-${ticket.status.toLowerCase()} t-${ticket.status.toLowerCase()}`;
+        box.innerText = ticket.number;
+        
+        if (ticket.status !== 'Open') {
+            const tooltip = document.createElement('span');
+            tooltip.className = 'tooltip-text';
+            tooltip.innerText = `👤 ${ticket.customer}\n📞 ${ticket.phone}`;
+            box.appendChild(tooltip);
+        }
+
+        box.onclick = () => toggleTicketSelection(ticket.number);
+        applyGroupingStyles(box, ticket.number);
+        grid.appendChild(box);
+    });
+    updateUISelection();
+    renderLedger();
+}
+
+function applyGroupingStyles(element, num) {
+    const filter = appState.currentFilter;
+    element.style.marginRight = "0px"; 
+    
+    if (filter === 'all') return; 
+    if (num % 12 === 0) return; 
+
+    if (filter === 'set' && num % 6 === 0) element.style.marginRight = "18px";
+    if (filter === 'halfSet' && num % 3 === 0) element.style.marginRight = "18px";
+    if (filter === 'twoTicket' && num % 2 === 0) element.style.marginRight = "18px";
+}
+
+function toggleTicketSelection(clickedNum) {
+    let group = [clickedNum];
+    const filter = appState.currentFilter;
+
+    if (filter === 'set') {
+        const start = Math.floor((clickedNum - 1) / 6) * 6 + 1;
+        group = Array.from({length: 6}, (_, i) => start + i);
+    } else if (filter === 'halfSet') {
+        const start = Math.floor((clickedNum - 1) / 3) * 3 + 1;
+        group = Array.from({length: 3}, (_, i) => start + i);
+    } else if (filter === 'twoTicket') {
+        const start = Math.floor((clickedNum - 1) / 2) * 2 + 1;
+        group = Array.from({length: 2}, (_, i) => start + i);
+    }
+
+    group.forEach(num => {
+        const ticket = appState.tickets.find(t => t.number == num);
+        if (ticket && ticket.status === 'Open') {
+            const index = appState.selectedTickets.indexOf(num);
+            if (index > -1) appState.selectedTickets.splice(index, 1);
+            else appState.selectedTickets.push(num);
+        }
+    });
+    updateUISelection();
+}
+
+function updateUISelection() {
+    const boxes = document.querySelectorAll('.ticket-box');
+    boxes.forEach(box => {
+        const num = parseInt(box.innerText);
+        if (appState.selectedTickets.includes(num)) {
+            box.classList.add('t-selected');
+        } else {
+            box.classList.remove('t-selected');
+        }
+    });
+    
+    document.getElementById('selectedCount').innerText = appState.selectedTickets.length;
+    
+    const openBtn = document.getElementById('openBookingModalBtn');
+    const floatBtn = document.getElementById('floatingBookBtn');
+
+    if (appState.selectedTickets.length > 0) {
+        openBtn.style.display = 'flex';
+        if (floatBtn) floatBtn.style.display = 'flex';
+    } else {
+        openBtn.style.display = 'none';
+        if (floatBtn) floatBtn.style.display = 'none';
+    }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelector('.tab-btn.active').classList.remove('active');
+        this.classList.add('active');
+        appState.currentFilter = this.getAttribute('data-filter');
+        appState.selectedTickets = []; 
+        renderTicketGrid();
+    });
+});
+
+// ─── 📝 MODAL: BOOKING / EDITING ───
+const bookingModal = document.getElementById('bookingModal');
+const bookingErrorMsg = document.getElementById('bookingFormError');
+
+function openNewBookingModal() {
+    document.getElementById('currentBookingSheet').innerText = appState.activeEvent.replace('BOOK_', '');
+    document.getElementById('ticketsToBookDisplay').innerText = appState.selectedTickets.join(', ');
+    document.getElementById('manualTicketNumbers').value = appState.selectedTickets.join(', ');
+    
+    document.getElementById('fullName').value = '';
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('amount').value = '';
+    
+    const removeWrapper = document.getElementById('removeBookingWrapper');
+    if (removeWrapper) removeWrapper.style.display = 'none';
+    
+    const bookedRadio = document.querySelector('input[name="initialStatus"][value="Booked"]');
+    if(bookedRadio) bookedRadio.checked = true;
+
+    bookingErrorMsg.style.display = 'none';
+    bookingModal.classList.add('open');
+}
+
+document.getElementById('openBookingModalBtn').addEventListener('click', openNewBookingModal);
+document.getElementById('floatingBookBtn').addEventListener('click', openNewBookingModal);
+
+document.getElementById('closeBookingModal').addEventListener('click', () => bookingModal.classList.remove('open'));
+document.getElementById('cancelBookingBtn').addEventListener('click', () => bookingModal.classList.remove('open'));
+
+document.getElementById('confirmBookingBtn').addEventListener('click', async () => {
+    const rawTicketInput = document.getElementById('manualTicketNumbers').value;
+    const status = document.querySelector('input[name="initialStatus"]:checked').value;
+    const name = document.getElementById('fullName').value.trim();
+    const phone = document.getElementById('phoneNumber').value.trim();
+    const paymentMode = document.getElementById('paymentMode').value;
+    const amount = document.getElementById('amount').value;
+
+    if (status !== 'Open' && !name) {
+        bookingErrorMsg.innerText = "Please enter a Full Name.";
+        bookingErrorMsg.style.display = 'block';
+        return;
+    }
+
+    let ticketsToBook = rawTicketInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    if (ticketsToBook.length === 0) {
+        bookingErrorMsg.innerText = "No valid tickets selected.";
+        bookingErrorMsg.style.display = 'block';
+        return;
+    }
+
+    bookingModal.classList.remove('open');
+    showSpinner();
+
+    try {
+        await fetchAPI('bookTickets', {
+            eventName: appState.activeEvent,
+            tickets: ticketsToBook,
+            status: status,
+            customer: name,
+            phone: phone,
+            payment: paymentMode,
+            amount: amount,
+            staffName: appState.staffName
+        });
+        selectEvent(appState.activeEvent); 
+    } catch (error) {
+        alert("Failed to update tickets. Please try again.");
+        hideSpinner();
+    }
+});
+
+// ─── 📊 LIVE LEDGER LOGIC ───
+function renderLedger() {
+    const tbody = document.getElementById('ledgerTableBody');
+    tbody.innerHTML = '';
+
+    let bookedTickets = appState.tickets.filter(t => t.status !== 'Open');
+    if (bookedTickets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text3);">No tickets booked yet.</td></tr>';
+        return;
+    }
+
+    const combine = document.getElementById('combineNamesToggle').checked;
+    const sortType = document.getElementById('ledgerSortSelect').value;
+    let displayData = [];
+
+    if (combine) {
+        const grouped = {};
+        bookedTickets.forEach(t => {
+            const key = t.customer.trim().toLowerCase();
+            if (!key) return; 
+            if (!grouped[key]) {
+                grouped[key] = { tickets: [], originalName: t.customer, phone: t.phone, status: t.status, payment: t.payment || "Cash", totalAmount: 0 };
+            }
+            grouped[key].tickets.push(t.number);
+            grouped[key].totalAmount += parseFloat(t.amount || 0);
+        });
+
+        displayData = Object.values(grouped).map(g => ({
+            displayTicket: g.tickets.join(', '), sortTicket: g.tickets[0],
+            name: g.originalName, phone: g.phone, status: g.status, payment: g.payment,
+            amount: g.totalAmount.toFixed(2)
+        }));
+    } else {
+        displayData = bookedTickets.map(t => ({
+            displayTicket: t.number, sortTicket: t.number,
+            name: t.customer, phone: t.phone, status: t.status, payment: t.payment || "Cash",
+            amount: parseFloat(t.amount || 0).toFixed(2)
+        }));
+    }
+
+    displayData.sort((a, b) => {
+        if (sortType === 'number') return a.sortTicket - b.sortTicket;
+        if (sortType === 'name') return a.name.localeCompare(b.name);
+        if (sortType === 'status') return a.status.localeCompare(b.status);
+        return 0;
+    });
+
+    displayData.forEach(row => {
+        let badgeClass = 'sb-advanced'; 
+        if (row.status.includes('Paid')) badgeClass = 'sb-paid';
+        else if (row.status.includes('Booked')) badgeClass = 'sb-booked';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="Ticket(s)"><strong style="font-family: var(--mono); color: var(--text);">${row.displayTicket}</strong></td>
+            <td data-label="Name">${row.name}</td>
+            <td data-label="Phone" style="font-family: var(--mono); color: var(--text3);">${row.phone}</td>
+            <td data-label="Status"><span class="status-badge ${badgeClass}">${row.status}</span></td>
+            <td data-label="Payment">${row.payment}</td>
+            <td data-label="Amount" style="font-weight: 700; color: var(--text);">₹${row.amount}</td>
+            <td data-label="Action" style="text-align: center;">
+                <button class="btn btn-ghost edit-row-btn" style="padding: 6px 12px; font-size: 11.5px;"><i data-lucide="edit-2"></i> Edit</button>
+            </td>
+        `;
+        
+        tr.querySelector('.edit-row-btn').addEventListener('click', () => {
+            const removeWrapper = document.getElementById('removeBookingWrapper');
+            if (removeWrapper) removeWrapper.style.display = 'flex';
+            
+            document.getElementById('currentBookingSheet').innerText = appState.activeEvent.replace('BOOK_', '');
+            document.getElementById('ticketsToBookDisplay').innerText = row.displayTicket;
+            document.getElementById('manualTicketNumbers').value = row.displayTicket;
+            document.getElementById('fullName').value = row.name;
+            document.getElementById('phoneNumber').value = row.phone;
+            document.getElementById('amount').value = row.amount;
+            
+            const statusRadio = document.querySelector(`input[name="initialStatus"][value="${row.status.split(' / ')[0]}"]`);
+            if (statusRadio) {
+                statusRadio.checked = true;
+            }
+
+            bookingErrorMsg.style.display = 'none';
+            bookingModal.classList.add('open');
+        });
+        tbody.appendChild(tr);
+    });
+    lucide.createIcons();
+}
+
+document.getElementById('combineNamesToggle').addEventListener('change', renderLedger);
+document.getElementById('ledgerSortSelect').addEventListener('change', renderLedger);
+
+// ─── 🗑️ DELETE EVENT ───
+document.getElementById('deleteEventBtn').addEventListener('click', async () => {
+    const confirmDelete = confirm(`⚠️ WARNING: Delete ${appState.activeEvent.replace('BOOK_', '')}?\n\nThis permanently deletes all 600 tickets.`);
+    if (confirmDelete) {
+        showSpinner();
+        try {
+            await fetchAPI('deleteEvent', { eventName: appState.activeEvent });
+            showPage('dashboardPage');
+            loadEventsFromBackend(); 
+        } catch (error) {
+            alert("Failed to delete event.");
+            hideSpinner();
+        }
+    }
+});
+
+// ─── 📸 SHARE GRID AS JPG ───
+document.getElementById('shareGridBtn').addEventListener('click', async () => {
+    showSpinner();
+    const container = document.createElement('div');
+    container.id = 'exportGridContainer';
+    const grid = document.createElement('div');
+    grid.className = 'export-grid';
+    
+    appState.tickets.forEach(t => {
+        const cell = document.createElement('div');
+        cell.className = 'export-cell ' + (t.status === 'Open' ? '' : 'export-booked');
+        cell.innerText = t.number;
+        grid.appendChild(cell);
+    });
+    
+    const footer = document.createElement('div');
+    footer.className = 'export-footer';
+    const today = new Date();
+    footer.innerText = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()} — Housie Pro — ${appState.activeEvent.replace('BOOK_', '')}`;
+    
+    container.appendChild(grid);
+    container.appendChild(footer);
+    document.body.appendChild(container);
+
+    try {
+        const canvas = await html2canvas(container, { scale: 2 });
+        document.body.removeChild(container);
+        canvas.toBlob(async (blob) => {
+            const fileName = `${appState.activeEvent}_Grid.jpg`;
+            const file = new File([blob], fileName, { type: 'image/jpeg' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try { await navigator.share({ files: [file], title: 'Housie Chart' }); } catch (e) {}
+            } else {
+                const link = document.createElement('a');
+                link.download = fileName; link.href = canvas.toDataURL('image/jpeg', 0.9); link.click();
+            }
+            hideSpinner();
+        }, 'image/jpeg', 0.9);
+    } catch (err) { hideSpinner(); if(document.body.contains(container)) document.body.removeChild(container); }
+});
+</script>
+</body>
+</html>
