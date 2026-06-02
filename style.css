@@ -1,0 +1,293 @@
+/* ─── 🎨 MULTI-THEME ENGINE ─────────────────────────────────────────── */
+    :root {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #1e2530; --bg4: #252d3a;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.12);
+      --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+      --accent: #7c3aed; --accent2: #9f67ff; --accentBg: rgba(124,58,237,0.15);
+      --green: #22c55e; --greenBg: rgba(34,197,94,0.15);
+      --blue: #3b82f6; --blueBg: rgba(59,130,246,0.15);
+      --orange: #f59e0b; --orangeBg: rgba(245,158,11,0.15);
+      --red: #ef4444; --redBg: rgba(239,68,68,0.12);
+      --purple: #a855f7; --purpleBg: rgba(168,85,247,0.15);
+      --radius: 12px; --radius-sm: 8px; --radius-xs: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font: 'Plus Jakarta Sans', sans-serif; --mono: 'DM Mono', monospace;
+      --sidebar-w: 240px;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc; --bg2: #ffffff; --bg3: #f1f5f9; --bg4: #e2e8f0;
+      --border: #e2e8f0; --border2: #cbd5e1;
+      --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+      --shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    [data-theme="midnight"] {
+      --bg: #000000; --bg2: #0a0a0a; --bg3: #141414; --bg4: #1f1f1f;
+      --border: #222222; --border2: #333333;
+      --accent: #3b82f6; --accent2: #60a5fa; --accentBg: rgba(59,130,246,0.15);
+    }
+    [data-theme="slate"] {
+      --bg: #0f172a; --bg2: #1e293b; --bg3: #334155; --bg4: #475569;
+      --border: #334155; --border2: #475569;
+      --text: #f8fafc; --text2: #cbd5e1; --text3: #94a3b8;
+    }
+
+    /* ─── RESET & TYPOGRAPHY ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+    h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+    /* ─── LAYOUT ──────────────────────────────────────────────── */
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; z-index: 100; padding: 0 0 20px; transition: transform 0.3s ease; }
+    .sidebar-logo { padding: 20px 18px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #b24bff); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 0 20px rgba(124,58,237,0.4); flex-shrink: 0; }
+    .logo-text strong { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+    .logo-text strong span { color: var(--accent2); }
+    
+    .sidebar-nav { flex: 1; padding: 16px 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;}
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; transition: all 0.2s; font-size: 13.5px; font-weight: 600; }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: var(--accentBg); color: var(--accent2); }
+    .nav-item svg { width: 18px; height: 18px; stroke-width: 2.2; opacity: 0.8; }
+    .sidebar-footer { padding: 14px 12px; border-top: 1px solid var(--border); }
+
+    .main-wrapper { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left 0.3s ease; }
+    
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: none; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+    .btn-ghost { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { background: var(--bg4); color: var(--text); }
+    .btn-danger { background: var(--redBg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+    
+    .page-content { flex: 1; padding: 32px 30px; display: none; }
+    .page-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap; gap: 10px; }
+    .section-title { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    
+    .mobile-menu-btn { display: none; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-xs); cursor: pointer; padding: 6px; margin-right: 10px; align-items: center; justify-content: center;}
+
+    /* ─── DASHBOARD STATS & EVENT CARDS ──────────────────────────────── */
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+    .stat-card-header { display: flex; align-items: center; justify-content: space-between; color: var(--text2); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .stat-card-val { font-size: 26px; font-weight: 800; color: var(--text); }
+    
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .event-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+    .event-card:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: var(--shadow); }
+    .event-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .event-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent2); background: var(--accentBg); }
+    .event-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .event-date { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+    
+    /* ─── UI CARDS & PANELS ────────────────────────────────────────────── */
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; margin-bottom: 16px;}
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-content { padding: 16px; }
+
+    /* ─── TICKET GRID & POS ────────────────────────────────────────────── */
+    .pos-layout { display: flex; flex-direction: column; gap: 20px; align-items: stretch; }
+    
+    .ticket-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: var(--text2); font-weight: 600; background: var(--bg3); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border2);}
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+    .ld-open { background: var(--bg4); border: 1px solid var(--border2); }
+    .ld-advanced { background: var(--orangeBg); border: 1px solid var(--orange); }
+    .ld-booked { background: var(--blueBg); border: 1px solid var(--blue); }
+    .ld-paid { background: var(--greenBg); border: 1px solid var(--green); }
+    .ld-selected { background: var(--purpleBg); border: 2px solid var(--purple); }
+
+    .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;}
+    .tab-btn { padding: 6px 14px; background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-family: var(--font); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .tab-btn.active { background: var(--accentBg); color: var(--accent2); border-color: var(--accent); }
+    
+    /* ─── TICKET GRID — UPGRADED ──────────────────────────────────────── */
+
+    /* 1. Flex-wrap grid: reflows naturally at every viewport width */
+    .ticket-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 4px 0 4px 2px;
+        margin-bottom: 20px;
+        /* no fixed columns, no horizontal scroll */
+    }
+
+    /* 2. Box size: 48×48 touch-friendly, clamp for fluid sizing */
+    .ticket-box {
+        width: clamp(40px, 5vw, 48px);
+        height: clamp(40px, 5vw, 48px);
+        border-radius: var(--radius-xs);
+        display: flex; align-items: center; justify-content: center;
+        font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+        border: 1.5px solid transparent;
+        flex-shrink: 0;
+        position: relative;
+        user-select: none;
+    }
+    .ticket-box:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 5; }
+
+    /* Status colors unchanged */
+    .ticket-box.t-open     { background: var(--bg3);     color: var(--text2);   border-color: var(--border2); }
+    .ticket-box.t-advanced { background: var(--orangeBg); color: var(--orange);  border-color: rgba(245,158,11,0.35); }
+    .ticket-box.t-booked   { background: var(--blueBg);   color: var(--blue);    border-color: rgba(59,130,246,0.35); }
+    .ticket-box.t-paid     { background: var(--greenBg);  color: var(--green);   border-color: rgba(34,197,94,0.35); }
+
+    /* 3. Selected: ring instead of scale — no layout shift, no neighbor overlap */
+    .ticket-box.t-selected {
+        background: var(--purpleBg);
+        color: var(--purple);
+        border-color: var(--purple);
+        box-shadow: 0 0 0 2.5px var(--purple), 0 0 10px rgba(168,85,247,0.35);
+        font-weight: 800;
+        /* NO transform: scale() */
+    }
+
+    /* 4. Row-of-10 grouping gap — added via JS class */
+    .ticket-box.row-gap-right { margin-right: 14px; }
+
+    /* 5. Group-border wrapper for Pair / Half Set / Full Set */
+    .ticket-group {
+        display: flex;
+        gap: 5px;
+        border: 1.5px dashed var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 4px;
+        transition: border-color 0.2s;
+        position: relative;
+    }
+    .ticket-group:hover { border-color: var(--accent); }
+    /* tiny group label */
+    .ticket-group-label {
+        position: absolute;
+        top: -8px; left: 50%; transform: translateX(-50%);
+        font-size: 8.5px; font-weight: 700;
+        background: var(--bg2); color: var(--text3);
+        padding: 0 4px; border-radius: 3px;
+        white-space: nowrap;
+        display: none;
+    }
+    .ticket-group:hover .ticket-group-label { display: block; }
+
+    /* 6. Skeleton loading boxes */
+    .ticket-skeleton {
+        width: clamp(40px, 5vw, 48px);
+        height: clamp(40px, 5vw, 48px);
+        border-radius: var(--radius-xs);
+        background: var(--bg3);
+        border: 1.5px solid var(--border);
+        flex-shrink: 0;
+        animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-pulse {
+        0%, 100% { opacity: 0.5; }
+        50%       { opacity: 1; }
+    }
+
+    /* 7. Tooltip: smarter positioning — flip upward only if near bottom */
+    .tooltip-text {
+        visibility: hidden;
+        width: 148px;
+        background: var(--bg4);
+        color: var(--text);
+        text-align: center;
+        border-radius: 7px;
+        padding: 8px 10px;
+        position: absolute;
+        z-index: 20;
+        /* default: show above */
+        bottom: calc(100% + 7px);
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.15s;
+        font-size: 11px;
+        border: 1px solid var(--border2);
+        pointer-events: none;
+        white-space: pre-wrap;
+        font-family: var(--font);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        line-height: 1.6;
+    }
+    /* Arrow pointing down (tooltip above box) */
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%; left: 50%; transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: var(--border2);
+    }
+    .ticket-box:hover .tooltip-text { visibility: visible; opacity: 1; }
+    /* For boxes near the top of the grid, flip tooltip below */
+    .ticket-box.tooltip-below .tooltip-text {
+        bottom: auto;
+        top: calc(100% + 7px);
+    }
+    .ticket-box.tooltip-below .tooltip-text::after {
+        top: auto; bottom: 100%;
+        border-top-color: transparent;
+        border-bottom-color: var(--border2);
+    }
+
+    /* ─── LEDGER & CUSTOMERS TABLE ─────────────────────────────────────────────────── */
+    .ledger-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; background: var(--bg3); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border2);}
+    .data-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    thead th { background: var(--bg4); color: var(--text3); padding: 12px; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-weight: 600;}
+    tbody td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+    tbody tr:hover td { background: var(--bg3); }
+    .status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .sb-paid { background: var(--greenBg); color: var(--green); }
+    .sb-booked { background: var(--blueBg); color: var(--blue); }
+    .sb-advanced { background: var(--orangeBg); color: var(--orange); }
+
+    /* ─── FORMS & INPUTS ───────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text3); font-weight: 600; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font); font-size: 13px; outline: none; transition: border-color 0.2s; }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accentBg); }
+    .theme-selector { width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; outline: none; }
+
+    /* ─── MODALS ───────────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+    .modal-box { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+    .error-msg { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 13px; font-weight: 600; margin-bottom: 16px; display: none;}
+
+    /* ─── LOGIN PAGE ───────────────────────────────────────────────────── */
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; z-index: 999; background: radial-gradient(circle at top right, var(--accentBg), var(--bg)), radial-gradient(circle at bottom left, var(--blueBg), var(--bg)); }
+    .login-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 24px 60px rgba(0,0,0,0.5); position: relative; overflow: hidden;}
+    .login-card::before { content:''; position: absolute; top:0; left:0; right:0; height:4px; background: linear-gradient(90deg, var(--accent), var(--blue)); }
+
+    #loadingSpinner { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border: 4px solid var(--bg3); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; z-index: 1001; }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    /* ─── EXPORT GRID STYLES (HIDDEN) ─────────────────────────────────── */
+    #exportGridContainer { position: fixed; left: -9999px; top: 0; width: 850px; background: white; padding: 20px; color: black; font-family: Arial, sans-serif; box-sizing: border-box; }
+    .export-grid { display: grid; grid-template-columns: repeat(15, 1fr); border: 2px solid #000; background: #000; gap: 1px; }
+    .export-cell { background: #fff; text-align: center; font-size: 14px; font-weight: bold; padding: 5px 0; }
+    .export-booked { background: #194a8d; color: #fff; }
+    .export-footer { text-align: center; font-size: 11px; margin-top: 10px; font-weight: bold; }
+
+    .floating-book-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(124,58,237,0.5); z-index: 950; padding: 0; transition: transform 0.2s, box-shadow 0.2s; }
+    .floating-book-btn:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(124,58,237,0.6); }
+    .floating-book-btn svg { width: 26px; height: 26px; margin: 0; }
+
+    /* ─── RESPONSIVE DESIGN ──────────────────────────────── */
+    @media (max-width: 1024px) {
+        .sidebar { transform: translateX(-100%); }
+        .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        .main-wrapper { margin-left: 0; }
+        .mobile-menu-btn { display: flex; }
+    }
