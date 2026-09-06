@@ -72,7 +72,14 @@
     .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; flex-wrap: wrap; gap: 10px; }
     .section-title { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
     
+    .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--bg2); border-top: 1px solid var(--border); padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); justify-content: space-around; align-items: stretch; }
+    .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 2px; color: var(--text3); cursor: pointer; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; }
+    .bottom-nav-item.active { color: var(--accent); }
+    .bottom-nav-item .bn-icon { width: 22px; height: 22px; }
     .mobile-menu-btn { display: none; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-xs); cursor: pointer; padding: 6px; margin-right: 10px; align-items: center; justify-content: center;}
+    .sidebar-close-btn { display: none; background: transparent; border: none; color: var(--text2); cursor: pointer; padding: 6px; margin-left: auto; align-items: center; justify-content: center; }
+    .sidebar-close-btn:hover { color: var(--text); }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 
     /* ─── DASHBOARD STATS & EVENT CARDS ──────────────────────────────── */
     .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
@@ -286,8 +293,63 @@
 
     /* ─── RESPONSIVE DESIGN ──────────────────────────────── */
     @media (max-width: 1024px) {
-        .sidebar { transform: translateX(-100%); }
-        .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
-        .main-wrapper { margin-left: 0; }
-        .mobile-menu-btn { display: flex; }
+        .sidebar { display: none; }
+        .mobile-menu-btn { display: none; }
+        .sidebar-close-btn { display: none; }
+        .sidebar-backdrop { display: none; }
+        .main-wrapper { margin-left: 0; padding-bottom: 76px; }
+        .bottom-nav { display: flex; }
+        .floating-book-btn { bottom: 86px; }
     }
+
+@media (max-width: 640px) {
+    .page-content { padding: 16px 12px; }
+    .modal-box { padding: 18px; max-height: 85vh; }
+    .modal-overlay { padding: 10px; }
+    .section-title { font-size: 16px; }
+    .stat-card { padding: 14px; }
+    .stat-card-val { font-size: 20px; }
+    .card-content { padding: 10px; }
+    #exportLedgerBtn { display: none; }
+
+    /* Data tables become stacked label:value cards instead of a horizontal-scroll
+       strip -- uses the data-label attributes already present on each <td>. */
+    .data-table-wrap table, .data-table-wrap thead, .data-table-wrap tbody,
+    .data-table-wrap th, .data-table-wrap td, .data-table-wrap tr {
+        display: block;
+    }
+    .data-table-wrap { overflow-x: visible; }
+    .data-table-wrap thead { display: none; }
+    .data-table-wrap tr {
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-sm);
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        background: var(--bg3);
+    }
+    .data-table-wrap td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 0;
+        border: none;
+        text-align: right;
+    }
+    .data-table-wrap td::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text3);
+        text-align: left;
+        flex-shrink: 0;
+    }
+    .data-table-wrap td[data-label="Action"] { justify-content: flex-end; }
+    .data-table-wrap td[data-label="Action"]::before { content: none; }
+
+    /* Button rows (POS header, Customers header, ledger controls) wrap onto
+       multiple lines cleanly instead of overflowing off-screen */
+    .ledger-controls, .events-grid, .stats-bar { gap: 10px; }
+    .btn { font-size: 13px; padding: 9px 12px; }
+}

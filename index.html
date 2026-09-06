@@ -5,10 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Housie Pro — Smart Booking System</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- PWA: manifest + icons + install support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d1117">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Housie Pro">
+  <meta name="mobile-web-app-capable" content="yes">
   
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -26,13 +39,8 @@
     </div>
     
     <div class="form-group" style="margin-bottom: 16px;">
-      <select id="staffLoginSelect" class="form-input" style="padding: 12px 14px;">
-        <option value="Admin">Admin</option>
-        <option value="Staff 1">Staff 1</option>
-      </select>
-    </div>
-    <div class="form-group" style="margin-bottom: 16px;">
-      <input type="password" id="staffLoginPin" class="form-input" placeholder="Enter PIN" maxlength="4" style="padding: 12px 14px;" />
+      <input type="password" id="staffLoginPin" class="form-input" placeholder="Enter your PIN" maxlength="6" style="padding: 12px 14px; text-align: center; letter-spacing: 4px; font-size: 18px;" />
+      <small style="color: var(--text3); display: block; margin-top: 6px; text-align: center;">Your PIN identifies you and your access level.</small>
     </div>
     
     <div id="loginError" class="error-msg"></div>
@@ -45,13 +53,15 @@
 
 <div id="appShell" style="display:none; width:100%;">
 
+  <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon"><i data-lucide="crown"></i></div>
       <div class="logo-text">
         <strong>HOUSIE <span>PRO</span></strong>
-        <small>Control Panel</small>
+        <small></small>
       </div>
+      <button class="sidebar-close-btn" onclick="closeMobileSidebar()"><i data-lucide="x"></i></button>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-item active" id="navDashboardBtn">
@@ -59,6 +69,9 @@
       </div>
       <div class="nav-item" id="navCustomersBtn">
         <i data-lucide="users"></i> Customers
+      </div>
+      <div class="nav-item" id="navUsersBtn" style="display:none;">
+        <i data-lucide="shield"></i> Users
       </div>
       <div class="nav-item" id="navSettingsBtn">
         <i data-lucide="settings"></i> Settings
@@ -77,7 +90,7 @@
     <div id="dashboardPage" class="page-content active">
       <div class="section-header">
         <div class="section-title">
-            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            <button class="mobile-menu-btn" onclick="openMobileSidebar()"><i data-lucide="menu"></i></button>
             Overview
         </div>
         <button class="btn btn-primary" id="topbarCreateEventBtn">
@@ -101,7 +114,11 @@
       </div>
 
       <div class="section-header" style="margin-top: 32px; margin-bottom: 16px;">
-        <div class="section-title" style="font-size: 18px;">Active Events</div>
+        <div class="section-title" style="font-size: 18px;">Events</div>
+        <div style="display:flex; gap: 8px;">
+            <button class="btn btn-ghost events-view-tab active" id="viewActiveEventsBtn" data-view="active">Active</button>
+            <button class="btn btn-ghost events-view-tab" id="viewClosedEventsBtn" data-view="closed">Closed</button>
+        </div>
       </div>
       <div id="eventCardsGrid" class="events-grid">
         <p style="grid-column: 1 / -1; color: var(--text3);">Loading available events...</p>
@@ -111,25 +128,93 @@
     <div id="customersPage" class="page-content">
       <div class="section-header">
         <div class="section-title">
-            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            <button class="mobile-menu-btn" onclick="openMobileSidebar()"><i data-lucide="menu"></i></button>
             Customers Directory
         </div>
+        <div style="display:flex; gap: 10px;">
+            <button class="btn btn-ghost" id="exportCustomersBtn"><i data-lucide="download"></i> Export</button>
+            <button class="btn btn-ghost" id="importCustomersBtn"><i data-lucide="upload"></i> Import</button>
+            <input type="file" id="customerImportFile" accept=".csv" style="display:none;">
+            <button class="btn btn-primary" id="openAddCustomerBtn"><i data-lucide="user-plus"></i> Add Customer</button>
+        </div>
       </div>
-      
-      <div class="card">
+
+      <div class="ledger-controls">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <select id="customerFilterMode" class="form-input" style="padding: 8px 12px; width: auto;">
+            <option value="all">All Events</option>
+            <option value="active">Active Event</option>
+            <option value="event">Select Event</option>
+          </select>
+          <select id="customerFilterEventSelect" class="form-input" style="padding: 8px 12px; width: auto; display:none;">
+            <option value="">Choose an event...</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <input type="text" id="customerSearchInput" class="form-input" placeholder="Search name, phone, or address" style="padding: 8px 12px; width: 220px;">
+          <div style="display:flex; border:1px solid var(--border2); border-radius:8px; overflow:hidden;">
+            <button class="btn btn-ghost view-type-btn active" id="customerViewTableBtn" data-view="table" style="border-radius:0; padding: 8px 10px;"><i data-lucide="list"></i></button>
+            <button class="btn btn-ghost view-type-btn" id="customerViewCardBtn" data-view="card" style="border-radius:0; padding: 8px 10px;"><i data-lucide="layout-grid"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="customersTableWrap">
         <div class="card-content">
           <div class="data-table-wrap">
             <table id="customersTable">
               <thead>
                 <tr>
                   <th>Customer Name</th>
-                  <th>Phone Number</th>
-                  <th>Total Tickets Bought</th>
-                  <th>Total Lifetime Value</th>
+                  <th>Address</th>
+                  <th>Mobile Number</th>
+                  <th>Total Tickets</th>
+                  <th>Total Amount</th>
+                  <th style="text-align:center;">Action</th>
                 </tr>
               </thead>
               <tbody id="customersTableBody">
-                 <tr><td colspan="4" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>
+                 <tr><td colspan="6" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="customersCardGrid" class="events-grid" style="display:none;"></div>
+    </div>
+
+    <div id="usersPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="mobile-menu-btn" onclick="openMobileSidebar()"><i data-lucide="menu"></i></button>
+            Staff & Permissions
+        </div>
+        <div style="display:flex; gap: 10px;">
+            <button class="btn btn-ghost" id="openBulkPinBtn"><i data-lucide="key-round"></i> Change PINs</button>
+            <button class="btn btn-primary" id="openAddUserBtn"><i data-lucide="user-plus"></i> Add Staff</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <div class="data-table-wrap">
+            <table id="usersTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>PIN</th>
+                  <th>Book</th>
+                  <th>Create Event</th>
+                  <th>Close Event</th>
+                  <th>Delete Event</th>
+                  <th>View Revenue</th>
+                  <th>Status</th>
+                  <th style="text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                 <tr><td colspan="9" style="text-align: center; color: var(--text3);">Loading staff...</td></tr>
               </tbody>
             </table>
           </div>
@@ -140,7 +225,7 @@
     <div id="settingsPage" class="page-content">
       <div class="section-header">
         <div class="section-title">
-            <button class="mobile-menu-btn" onclick="document.getElementById('sidebar').classList.add('open')"><i data-lucide="menu"></i></button>
+            <button class="mobile-menu-btn" onclick="openMobileSidebar()"><i data-lucide="menu"></i></button>
             Platform Settings
         </div>
       </div>
@@ -167,13 +252,25 @@
           <span id="posTitle">Booking</span>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-ghost" id="openBatchBtn" style="color: var(--text);">
-                <i data-lucide="scan-line"></i> Import / OCR
+            <button class="btn btn-ghost" id="openScannerBtn" style="color: var(--text);">
+                <i data-lucide="qr-code"></i> Scan
             </button>
             <button class="btn btn-primary" id="shareGridBtn" style="background: #25D366; color: white;">
-                <i data-lucide="share-2"></i> WhatsApp Grid
+                <i data-lucide="share-2"></i> Share
             </button>
-            <button class="btn btn-danger" id="deleteEventBtn"><i data-lucide="trash-2"></i> Delete</button>
+            <button class="btn btn-ghost" id="openBatchBtn" style="color: var(--text);">
+                <i data-lucide="scan-line"></i> OCR
+            </button>
+            <button class="btn btn-ghost" id="exportEventTicketsBtn" style="color: var(--text);" title="Export tickets">
+                <i data-lucide="download"></i> 
+            </button>
+            <button class="btn btn-ghost" id="importEventTicketsBtn" style="color: var(--text);" title="Import tickets">
+                <i data-lucide="upload"></i> 
+            </button>
+            <input type="file" id="eventTicketsImportFile" accept=".csv" style="display:none;">
+            <button class="btn btn-ghost" id="closeEventBtn" style="color: var(--orange); border: 1px solid var(--orange);" title="Close Event"><i data-lucide="lock"></i></button>
+            <button class="btn btn-primary" id="reopenEventBtn" style="display: none;"><i data-lucide="lock-open"></i> Reopen Event</button>
+            <button class="btn btn-danger" id="deleteEventBtn" title="Delete Event"><i data-lucide="trash-2"></i> </button>
         </div>
         
         <button id="floatingBookBtn" class="btn btn-primary floating-book-btn" style="display: none;">
@@ -182,6 +279,9 @@
       </div>
 
       <div class="pos-layout">
+        <div id="closedEventBanner" style="display:none; background: var(--orangeBg, #fff3cd); color: var(--orange, #856404); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-weight: 600;">
+            🔒 This event is closed and read-only. Reopen it to make changes.
+        </div>
         
         <div class="card">
           <div class="card-header">
@@ -227,13 +327,16 @@
                 <input type="checkbox" id="combineNamesToggle" style="accent-color: var(--accent); width: 16px; height: 16px;">
                 Combine Bookings by Name
               </label>
-              <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <input type="text" id="ledgerSearchInput" class="form-input" placeholder="Search name, phone, or ticket #" style="padding: 8px 12px; width: 220px;">
                 <span style="font-size: 12px; color: var(--text3); font-weight: 600;">Sort By:</span>
                 <select id="ledgerSortSelect" class="form-input" style="padding: 8px 12px; width: auto;">
                   <option value="number">Ticket Number</option>
                   <option value="name">Customer Name</option>
                   <option value="status">Status</option>
+                  <option value="modified">Last Modified</option>
                 </select>
+                <button class="btn btn-ghost" id="exportLedgerBtn" style="padding: 8px 12px;"><i data-lucide="download"></i> Export</button>
               </div>
             </div>
             <div class="data-table-wrap">
@@ -256,6 +359,41 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <div class="bottom-nav-item active" id="bottomNavDashboardBtn">
+      <svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="bottom-nav-item" id="bottomNavCustomersBtn">
+      <svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      <span>Customers</span>
+    </div>
+    <div class="bottom-nav-item" id="bottomNavUsersBtn" style="display:none;">
+      <svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
+      <span>Users</span>
+    </div>
+    <div class="bottom-nav-item" id="bottomNavSettingsBtn">
+      <svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      <span>Settings</span>
+    </div>
+  </nav>
+</div>
+
+<div id="scannerModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 460px; padding: 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 style="margin:0;"><i data-lucide="qr-code"></i> Scan Ticket</h3>
+    </div>
+    <p style="color: var(--text3); font-size: 13px; margin-bottom: 12px;">Point the camera at a ticket's QR/barcode. Each successful scan adds that ticket to your selection — scan as many as you need, then book them together.</p>
+    <div id="qrReaderView" style="width:100%; border-radius: 10px; overflow:hidden; background:#000;"></div>
+    <p id="scannerStatus" style="font-size: 13px; margin-top: 10px; min-height: 18px; color: var(--text3);"></p>
+    <div id="scannedTicketsChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px;"></div>
+    <div style="display:flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-ghost" id="scannerCancelBtn" style="flex:1;">Close</button>
+      <button class="btn btn-primary" id="scannerDoneBtn" style="flex:1;">Done — Book Selected</button>
     </div>
   </div>
 </div>
@@ -306,6 +444,114 @@
   </div>
 </div>
 
+<div id="customerFormModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 440px; padding: 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 id="customerFormTitle" style="margin:0;"><i data-lucide="user-plus"></i> Add Customer</h3>
+    </div>
+    <input type="hidden" id="customerFormId">
+    <div class="form-group">
+      <label for="customerFormName">Name</label>
+      <input type="text" id="customerFormName" class="form-input" placeholder="e.g. Priya Sharma">
+    </div>
+    <div class="form-group">
+      <label for="customerFormPhone">Mobile Number</label>
+      <input type="text" id="customerFormPhone" class="form-input" placeholder="e.g. 98765xxxxx">
+    </div>
+    <div class="form-group">
+      <label for="customerFormAddress">Address</label>
+      <input type="text" id="customerFormAddress" class="form-input" placeholder="e.g. Fancy Bazaar, Guwahati">
+    </div>
+    <div class="form-group">
+      <label for="customerFormNotes">Notes</label>
+      <input type="text" id="customerFormNotes" class="form-input" placeholder="Optional">
+    </div>
+    <p id="customerFormError" style="color: var(--red, #e74c3c); font-size: 12.5px; margin-top: 4px; display:none;"></p>
+    <div style="display:flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-ghost" id="customerFormCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="customerFormSaveBtn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="bulkPinModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 480px; padding: 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin:0;"><i data-lucide="key-round"></i> Change PINs</h3>
+    </div>
+    <p style="color: var(--text3); font-size: 13.5px; margin-bottom: 16px;">Type a new PIN for anyone you want to change, then save all at once. Leave a field blank to keep that person's current PIN. Each PIN must be unique.</p>
+    <div id="bulkPinList" style="display:flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto;">
+    </div>
+    <p id="bulkPinError" style="color: var(--red, #e74c3c); font-size: 12.5px; margin-top: 12px; display:none;"></p>
+    <div style="display:flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-ghost" id="bulkPinCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="bulkPinSaveBtn" style="flex:1;">Save All Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="userFormModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 440px; padding: 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 id="userFormTitle" style="margin:0;"><i data-lucide="user-plus"></i> Add Staff</h3>
+    </div>
+    <input type="hidden" id="userFormId">
+    <div class="form-group">
+      <label for="userFormName">Name</label>
+      <input type="text" id="userFormName" class="form-input" placeholder="e.g. Priya">
+    </div>
+    <div class="form-group">
+      <label for="userFormPin">PIN (4-6 digits)</label>
+      <input type="text" id="userFormPin" class="form-input" inputmode="numeric" maxlength="6" placeholder="e.g. 4521">
+    </div>
+    <div class="form-group">
+      <label for="userFormRole">Role</label>
+      <select id="userFormRole" class="form-input">
+        <option value="cashier">Cashier — book tickets only</option>
+        <option value="manager">Manager — book, create & close events, view revenue</option>
+        <option value="custom">Custom — pick permissions manually</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Permissions</label>
+      <div style="display:flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="rightCanBook" checked> Book / manage tickets</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="rightCanCreateEvent"> Create events</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="rightCanCloseEvent"> Close / reopen events</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="rightCanDeleteEvent"> Delete events</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="rightCanViewRevenue"> View revenue figures</label>
+      </div>
+    </div>
+    <div class="form-group" id="userFormStatusGroup" style="display:none;">
+      <label for="userFormStatus">Status</label>
+      <select id="userFormStatus" class="form-input">
+        <option value="Active">Active</option>
+        <option value="Disabled">Disabled</option>
+      </select>
+    </div>
+    <p id="userFormError" style="color: var(--red, #e74c3c); font-size: 12.5px; margin-top: 4px; display:none;"></p>
+    <div style="display:flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-ghost" id="userFormCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="userFormSaveBtn" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="pinConfirmModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 380px; padding: 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin:0;"><i data-lucide="shield-check"></i> Confirm PIN</h3>
+    </div>
+    <p id="pinConfirmMessage" style="color: var(--text3); font-size: 13.5px; margin-bottom: 16px;">This action needs your PIN to continue.</p>
+    <input type="password" id="pinConfirmInput" class="form-input" inputmode="numeric" maxlength="6" placeholder="Enter PIN" autocomplete="off">
+    <p id="pinConfirmError" style="color: var(--red, #e74c3c); font-size: 12.5px; margin-top: 8px; display:none;"></p>
+    <div style="display:flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-ghost" id="pinConfirmCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="pinConfirmSubmitBtn" style="flex:1;">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div id="bookingModal" class="modal-overlay">
   <div class="modal-box" style="max-width: 500px; padding: 28px;">
     
@@ -344,9 +590,10 @@
         </div>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" style="position: relative;">
         <label for="fullName">Full Name:</label>
-        <input type="text" id="fullName" class="form-input" required>
+        <input type="text" id="fullName" class="form-input" autocomplete="off" required>
+        <div id="customerSuggestions" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:50; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; margin-top: 4px; max-height: 180px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.4);"></div>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -366,6 +613,7 @@
     <div class="form-group">
         <label for="amount">Total Amount (₹):</label>
         <input type="number" id="amount" class="form-input" step="0.01" min="0" placeholder="0.00">
+        <small id="perTicketHint" style="color: var(--text3); display: block; margin-top: 4px;"></small>
     </div>
     
     <div id="bookingFormError" class="error-msg"></div>
@@ -377,6 +625,9 @@
   </div>
 </div>
 
-<script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="app-core.js"></script>
+<script src="pos-booking.js"></script>
 </body>
 </html>
