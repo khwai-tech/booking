@@ -59,7 +59,7 @@
       <div class="logo-icon"><i data-lucide="crown"></i></div>
       <div class="logo-text">
         <strong>HOUSIE <span>PRO</span></strong>
-        <small></small>
+        <small>Control Panel</small>
       </div>
       <button class="sidebar-close-btn" onclick="closeMobileSidebar()"><i data-lucide="x"></i></button>
     </div>
@@ -190,7 +190,9 @@
             <button class="mobile-menu-btn" onclick="openMobileSidebar()"><i data-lucide="menu"></i></button>
             Staff & Permissions
         </div>
-        <div style="display:flex; gap: 10px;">
+        <div style="display:flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-ghost" id="openLoginHistoryBtn"><i data-lucide="history"></i> Login History</button>
+            <button class="btn btn-ghost" id="openBookingHistoryBtn"><i data-lucide="clipboard-list"></i> Booking History</button>
             <button class="btn btn-ghost" id="openBulkPinBtn"><i data-lucide="key-round"></i> Change PINs</button>
             <button class="btn btn-primary" id="openAddUserBtn"><i data-lucide="user-plus"></i> Add Staff</button>
         </div>
@@ -222,6 +224,66 @@
       </div>
     </div>
 
+    <div id="loginHistoryPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="btn btn-ghost" id="backFromLoginHistoryBtn" style="margin-right: 8px;"><i data-lucide="arrow-left"></i></button>
+            Login History
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-content">
+          <div class="data-table-wrap">
+            <table id="loginHistoryTable">
+              <thead>
+                <tr>
+                  <th>Staff</th>
+                  <th>Result</th>
+                  <th>Device</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="loginHistoryTableBody">
+                 <tr><td colspan="4" style="text-align: center; color: var(--text3);">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="bookingHistoryPage" class="page-content">
+      <div class="section-header">
+        <div class="section-title">
+            <button class="btn btn-ghost" id="backFromBookingHistoryBtn" style="margin-right: 8px;"><i data-lucide="arrow-left"></i></button>
+            Booking History
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-content">
+          <div class="data-table-wrap">
+            <table id="bookingHistoryTable">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Ticket</th>
+                  <th>Action</th>
+                  <th>Status Change</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Staff</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="bookingHistoryTableBody">
+                 <tr><td colspan="8" style="text-align: center; color: var(--text3);">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="settingsPage" class="page-content">
       <div class="section-header">
         <div class="section-title">
@@ -241,6 +303,16 @@
               <option value="slate">🏢 Slate Pro</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width: 600px; margin-top: 20px;">
+        <div class="card-header"><div class="card-title"><i data-lucide="user"></i> Account</div></div>
+        <div class="card-content">
+          <span id="settingsLoggedInStaffDisplay" style="display:block; font-weight: 600; font-size: 14px; color: var(--text2); margin-bottom: 14px;"></span>
+          <button class="btn btn-ghost" id="settingsLogoutBtn" style="width: 100%;">
+              <i data-lucide="log-out"></i> Logout
+          </button>
         </div>
       </div>
     </div>

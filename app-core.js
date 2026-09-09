@@ -20,6 +20,41 @@ if ('serviceWorker' in navigator) {
 }
 
 const appState = { staffName: null, activeEvent: null, tickets: [], selectedTickets: [], currentFilter: 'all', eventClosed: false, rights: {}, isSuperAdmin: false, pin: null };
+const LOGIN_EXPIRY_MS = 10 * 24 * 60 * 60 * 1000; // fixed 10 days from original login, regardless of activity
+
+// ─── ⚡ INSTANT SESSION CHECK ───
+// Runs synchronously the moment this script executes — deliberately NOT deferred to
+// DOMContentLoaded, so there's no visible flash of the login screen on refresh for an
+// already-logged-in user. The login page is visible by default in the HTML; this runs
+// early enough to hide it before that default state is ever actually seen.
+function getValidSavedSession() {
+    const savedProfile = localStorage.getItem('housie_profile');
+    if (!savedProfile) return null;
+
+    // 🔒 Fixed 10-day login expiry — counts from the original login, not last activity.
+    const loginTime = parseInt(localStorage.getItem('housie_login_time'), 10);
+    if (!loginTime || (Date.now() - loginTime) > LOGIN_EXPIRY_MS) {
+        localStorage.removeItem('housie_profile');
+        localStorage.removeItem('housie_pin');
+        localStorage.removeItem('housie_login_time');
+        localStorage.removeItem('housie_last_page');
+        localStorage.removeItem('housie_last_event');
+        return null;
+    }
+    try {
+        return JSON.parse(savedProfile);
+    } catch (e) {
+        return null;
+    }
+}
+
+const savedSessionProfile = getValidSavedSession();
+if (savedSessionProfile) {
+    appState.pin = localStorage.getItem('housie_pin') || null;
+    applyLoggedInProfile(savedSessionProfile);
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+}
 let currentEventsView = 'active'; // 'active' | 'closed' — which dashboard tab is showing
 
 // ─── THEME ───
@@ -92,6 +127,8 @@ function applyLoggedInProfile(profile) {
     appState.rights = profile.rights || {};
     appState.isSuperAdmin = !!profile.isSuperAdmin;
     document.getElementById('loggedInStaffDisplay').innerText = `👋 ${profile.name}${appState.isSuperAdmin ? ' (Super Admin)' : ''}`;
+    const settingsDisplay = document.getElementById('settingsLoggedInStaffDisplay');
+    if (settingsDisplay) settingsDisplay.innerText = `👋 Logged in as ${profile.name}${appState.isSuperAdmin ? ' (Super Admin)' : ''}`;
     document.getElementById('navUsersBtn').style.display = appState.isSuperAdmin ? 'flex' : 'none';
     document.getElementById('bottomNavUsersBtn').style.display = appState.isSuperAdmin ? 'flex' : 'none';
     const canCreate = appState.isSuperAdmin || appState.rights.canCreateEvent;
@@ -126,12 +163,13 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
         // 🔁 Now calling Supabase's authenticate_staff RPC instead of the old Apps Script route.
         // The RPC always resolves (never throws on a bad PIN) — it returns { success, ... } —
         // so a wrong PIN is a business-logic failure, not a network error.
-        const { data, error } = await sb.rpc('authenticate_staff', { input_pin: pin });
+        const { data, error } = await sb.rpc('authenticate_staff', { input_pin: pin, p_device_info: navigator.userAgent });
         if (error) throw error;
         if (!data.success) throw new Error(data.error || "Invalid PIN.");
 
         appState.pin = pin; // set BEFORE applyLoggedInProfile so it gets persisted below
         applyLoggedInProfile(data.profile);
+        localStorage.setItem('housie_login_time', Date.now().toString());
         err.style.display = 'none';
         
         document.getElementById('loginPage').style.display = 'none';
@@ -147,37 +185,36 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 });
 document.getElementById('staffLoginPin').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
+function logout() {
     appState.staffName = null; 
     appState.rights = {};
     appState.isSuperAdmin = false;
     appState.pin = null;
     localStorage.removeItem('housie_profile');
     localStorage.removeItem('housie_pin');
+    localStorage.removeItem('housie_login_time');
     localStorage.removeItem('housie_last_page');
     localStorage.removeItem('housie_last_event');
     document.getElementById('appShell').style.display = 'none';
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('staffLoginPin').value = '';
-});
+}
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('settingsLogoutBtn').addEventListener('click', logout);
 
-// ─── 🔁 RESTORE SAVED SESSION ON LOAD ───
-// PIN entry is now only ever needed at Login and at Delete Event — everything else
-// silently reuses the PIN restored here. Deferred to DOMContentLoaded because
-// selectEvent() (needed to restore the POS page) lives in pos-booking.js, which
-// hasn't loaded yet at the point app-core.js itself first runs.
+// ─── 🔁 RESTORE LAST PAGE/EVENT ON LOAD ───
+// The instant check above already decided login-vs-appShell with no visible flash.
+// This part is still deferred to DOMContentLoaded because selectEvent() (needed to
+// restore the POS page) lives in pos-booking.js, which hasn't loaded yet at the point
+// this script first runs — and it does one Supabase call to confirm the last event
+// still exists, so it's inherently async either way.
 document.addEventListener('DOMContentLoaded', async () => {
-    const savedProfile = localStorage.getItem('housie_profile');
-    if (!savedProfile) return;
+    if (!appState.staffName) return; // no valid session — login page is already showing
+
+    const lastPage = localStorage.getItem('housie_last_page') || 'dashboardPage';
+    const lastEventRaw = localStorage.getItem('housie_last_event');
+
     try {
-        appState.pin = localStorage.getItem('housie_pin') || null;
-        applyLoggedInProfile(JSON.parse(savedProfile));
-        document.getElementById('loginPage').style.display = 'none';
-        document.getElementById('appShell').style.display = 'flex';
-
-        const lastPage = localStorage.getItem('housie_last_page') || 'dashboardPage';
-        const lastEventRaw = localStorage.getItem('housie_last_event');
-
         if (lastPage === 'posPage' && lastEventRaw) {
             const lastEvent = JSON.parse(lastEventRaw);
             const { data: stillExists } = await sb.from('events').select('id').eq('id', lastEvent.id).maybeSingle();
@@ -190,6 +227,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             showPage('customersPage'); loadCustomers();
         } else if (lastPage === 'usersPage') {
             showPage('usersPage'); openUserManagement();
+        } else if (lastPage === 'loginHistoryPage') {
+            showPage('loginHistoryPage'); loadLoginHistory();
+        } else if (lastPage === 'bookingHistoryPage') {
+            showPage('bookingHistoryPage'); loadBookingHistory();
         } else if (lastPage === 'settingsPage') {
             showPage('settingsPage');
         } else {
@@ -248,7 +289,7 @@ async function getSessionPin(message) {
         const entered = await getConfirmedPin(message);
         if (!entered) return null; // user cancelled
         try {
-            const { data, error } = await sb.rpc('authenticate_staff', { input_pin: entered });
+            const { data, error } = await sb.rpc('authenticate_staff', { input_pin: entered, p_device_info: navigator.userAgent });
             if (error) throw error;
             if (data.success) {
                 appState.pin = entered;
@@ -271,6 +312,11 @@ document.getElementById('navSettingsBtn').addEventListener('click', () => { show
 document.getElementById('bottomNavDashboardBtn').addEventListener('click', () => { showPage('dashboardPage'); loadEventsFromBackend(); });
 document.getElementById('bottomNavCustomersBtn').addEventListener('click', () => { showPage('customersPage'); loadCustomers(); });
 document.getElementById('bottomNavUsersBtn').addEventListener('click', () => { showPage('usersPage'); openUserManagement(); });
+
+document.getElementById('openLoginHistoryBtn').addEventListener('click', () => { showPage('loginHistoryPage'); loadLoginHistory(); });
+document.getElementById('backFromLoginHistoryBtn').addEventListener('click', () => { showPage('usersPage'); openUserManagement(); });
+document.getElementById('openBookingHistoryBtn').addEventListener('click', () => { showPage('bookingHistoryPage'); loadBookingHistory(); });
+document.getElementById('backFromBookingHistoryBtn').addEventListener('click', () => { showPage('usersPage'); openUserManagement(); });
 document.getElementById('bottomNavSettingsBtn').addEventListener('click', () => { showPage('settingsPage'); });
 
 // ─── 📅 DASHBOARD: EVENT HUB & STATS ───
@@ -379,9 +425,20 @@ function setCustomerView(type) {
 }
 
 async function loadCustomers() {
+    // 📍 Save scroll position first — replacing the table body with a short "Loading..."
+    // row temporarily shrinks the page below the current scroll position, which makes
+    // the browser snap back to the top on its own. Restoring afterward fixes that.
+    const scrollY = window.scrollY;
+    const hasExistingRows = allCustomersCache.length > 0;
+
     showSpinner();
     const tbody = document.getElementById('customersTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>';
+    // Only show the "Loading..." placeholder on the very first load — on a refresh
+    // (e.g. after editing/deleting a customer), keep showing the current rows until
+    // the new data is ready, so the table never collapses out from under you.
+    if (!hasExistingRows) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text3);">Loading customers...</td></tr>';
+    }
 
     const mode = document.getElementById('customerFilterMode').value;
     let eventId = null, activeOnly = false;
@@ -400,6 +457,7 @@ async function loadCustomers() {
     }
     allCustomersCache = data.customers.sort((a, b) => b.spent - a.spent);
     renderCustomersList();
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
 }
 
 function getFilteredCustomers() {
@@ -692,6 +750,75 @@ document.getElementById('deleteEventBtn').addEventListener('click', async () => 
 
 
 // ─── 👤 STAFF & PERMISSIONS (Super Admin only) ───
+// ─── 📜 LOGIN HISTORY (Super Admin only) ───
+async function loadLoginHistory() {
+    const tbody = document.getElementById('loginHistoryTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text3);">Loading...</td></tr>';
+
+    const pin = await getSessionPin("Confirm your PIN to view login history.");
+    if (!pin) { showPage('usersPage'); openUserManagement(); return; }
+
+    showSpinner();
+    const { data, error } = await sb.rpc('get_login_log', { requestor_pin: pin });
+    hideSpinner();
+    if (error || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text3);">Could not load login history.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = '';
+    if (data.logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text3);">No login attempts recorded yet.</td></tr>';
+        return;
+    }
+    data.logs.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="Staff">${l.staff_name || '<span style="color: var(--text3);">Unknown</span>'}</td>
+            <td data-label="Result">${l.success ? '<span style="color: var(--green, #2ecc71);">Success</span>' : '<span style="color: var(--red, #e74c3c);">Failed</span>'}</td>
+            <td data-label="Device" style="color: var(--text3); font-size: 12px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${l.device_info || '-'}</td>
+            <td data-label="Time" style="color: var(--text3);">${new Date(l.created_at).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ─── 📜 BOOKING HISTORY (Super Admin only) ───
+async function loadBookingHistory() {
+    const tbody = document.getElementById('bookingHistoryTableBody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text3);">Loading...</td></tr>';
+
+    const pin = await getSessionPin("Confirm your PIN to view booking history.");
+    if (!pin) { showPage('usersPage'); openUserManagement(); return; }
+
+    showSpinner();
+    const { data, error } = await sb.rpc('get_booking_log', { requestor_pin: pin });
+    hideSpinner();
+    if (error || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text3);">Could not load booking history.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = '';
+    if (data.logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text3);">No booking activity recorded yet.</td></tr>';
+        return;
+    }
+    const actionColor = { Book: 'var(--green, #2ecc71)', Edit: 'var(--blue)', Release: 'var(--text3)' };
+    data.logs.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="Event">${l.event_name || '-'}</td>
+            <td data-label="Ticket" style="font-family: var(--mono);">#${l.ticket_number}</td>
+            <td data-label="Action"><span style="color: ${actionColor[l.action_type] || 'var(--text)'}; font-weight: 600;">${l.action_type}</span></td>
+            <td data-label="Status Change" style="color: var(--text3); font-size: 12px;">${l.old_status} → ${l.new_status}</td>
+            <td data-label="Customer">${l.customer_name || '-'}</td>
+            <td data-label="Amount">₹${(l.amount || 0).toFixed(2)}</td>
+            <td data-label="Staff">${l.staff_name || '-'}</td>
+            <td data-label="Time" style="color: var(--text3);">${new Date(l.created_at).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
 async function openUserManagement() {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text3);">Loading staff...</td></tr>';
