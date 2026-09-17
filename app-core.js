@@ -412,6 +412,7 @@ document.getElementById('customerFilterMode').addEventListener('change', (e) => 
 });
 document.getElementById('customerFilterEventSelect').addEventListener('change', () => loadCustomers());
 document.getElementById('customerSearchInput').addEventListener('input', () => renderCustomersList());
+document.getElementById('customerSortSelect').addEventListener('change', () => renderCustomersList());
 
 document.getElementById('customerViewTableBtn').addEventListener('click', () => setCustomerView('table'));
 document.getElementById('customerViewCardBtn').addEventListener('click', () => setCustomerView('card'));
@@ -444,7 +445,13 @@ async function loadCustomers() {
     let eventId = null, activeOnly = false;
     if (mode === 'event') {
         eventId = document.getElementById('customerFilterEventSelect').value;
-        if (!eventId) { hideSpinner(); allCustomersCache = []; renderCustomersList(); return; }
+        if (!eventId) {
+            hideSpinner(); allCustomersCache = [];
+            document.getElementById('statTotalCustomers').innerText = '0';
+            document.getElementById('statCustomersWithMobile').innerText = '0';
+            renderCustomersList();
+            return;
+        }
     } else if (mode === 'active') {
         activeOnly = true;
     }
@@ -455,19 +462,31 @@ async function loadCustomers() {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--red);">Failed to load customers.</td></tr>';
         return;
     }
-    allCustomersCache = data.customers.sort((a, b) => b.spent - a.spent);
+    allCustomersCache = data.customers;
+    document.getElementById('statTotalCustomers').innerText = allCustomersCache.length.toLocaleString();
+    document.getElementById('statCustomersWithMobile').innerText = allCustomersCache.filter(c => c.phone && c.phone.trim().length > 0).length.toLocaleString();
     renderCustomersList();
     requestAnimationFrame(() => window.scrollTo(0, scrollY));
 }
 
 function getFilteredCustomers() {
     const term = document.getElementById('customerSearchInput').value.trim().toLowerCase();
-    return term
+    const list = (term
         ? allCustomersCache.filter(c =>
             c.name.toLowerCase().includes(term) ||
             (c.phone || '').toLowerCase().includes(term) ||
             (c.address || '').toLowerCase().includes(term))
-        : allCustomersCache;
+        : allCustomersCache
+    ).slice(); // copy — sorting below shouldn't mutate the cache
+
+    const sortBy = document.getElementById('customerSortSelect').value;
+    list.sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        if (sortBy === 'tickets') return b.tickets - a.tickets;
+        if (sortBy === 'mobile') return (a.phone || '').localeCompare(b.phone || '');
+        return b.spent - a.spent; // default: amount
+    });
+    return list;
 }
 
 function renderCustomersList() {

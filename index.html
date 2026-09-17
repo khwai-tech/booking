@@ -139,6 +139,17 @@
         </div>
       </div>
 
+      <div class="stats-bar" style="margin-bottom: 20px;">
+        <div class="stat-card">
+          <div class="stat-card-header">Total Customers <i data-lucide="users"></i></div>
+          <div class="stat-card-val" id="statTotalCustomers">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">With Mobile Number <i data-lucide="phone"></i></div>
+          <div class="stat-card-val" id="statCustomersWithMobile">0</div>
+        </div>
+      </div>
+
       <div class="ledger-controls">
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           <select id="customerFilterMode" class="form-input" style="padding: 8px 12px; width: auto;">
@@ -148,6 +159,12 @@
           </select>
           <select id="customerFilterEventSelect" class="form-input" style="padding: 8px 12px; width: auto; display:none;">
             <option value="">Choose an event...</option>
+          </select>
+          <select id="customerSortSelect" class="form-input" style="padding: 8px 12px; width: auto;">
+            <option value="name">Name</option>
+            <option value="tickets">Tickets</option>
+            <option value="mobile">Mobile No.</option>
+            <option value="amount">Amount</option>
           </select>
         </div>
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
