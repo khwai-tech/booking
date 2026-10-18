@@ -637,43 +637,74 @@ document.getElementById('combineNamesToggle').addEventListener('change', renderL
 document.getElementById('ledgerSortSelect').addEventListener('change', renderLedger);
 document.getElementById('ledgerSearchInput').addEventListener('input', renderLedger);
 
-// ─── 📸 SHARE GRID AS JPG ───
-document.getElementById('shareGridBtn').addEventListener('click', async () => {
-    showSpinner();
-    const container = document.createElement('div');
-    container.id = 'exportGridContainer';
-    const grid = document.createElement('div');
-    grid.className = 'export-grid';
-    
-    appState.tickets.forEach(t => {
-        const cell = document.createElement('div');
-        cell.className = 'export-cell ' + (t.status === 'Open' ? '' : 'export-booked');
-        cell.innerText = t.number;
-        grid.appendChild(cell);
-    });
-    
-    const footer = document.createElement('div');
-    footer.className = 'export-footer';
-    const today = new Date();
-    footer.innerText = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()} — Housie Pro — ${appState.activeEventName}`;
-    
-    container.appendChild(grid);
-    container.appendChild(footer);
-    document.body.appendChild(container);
+// ─── 📸 SHARE GRID AS JPG (drawn straight onto a canvas — no html2canvas) ───
+function drawGridCanvas() {
+    const tickets = appState.tickets;
+    const n = tickets.length;
+    const cols = n > 200 ? 20 : 10;          // adjust to match your old .export-grid
+    const rows = Math.ceil(n / cols);
+    const cellW = 56, cellH = 40, gap = 4, pad = 16, footerH = 36;
+    const W = pad * 2 + cols * cellW + (cols - 1) * gap;
+    const H = pad * 2 + rows * cellH + (rows - 1) * gap + footerH;
+    const scale = 2;
 
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 16px "DM Mono", monospace';
+
+    tickets.forEach((t, i) => {
+        const x = pad + (i % cols) * (cellW + gap);
+        const y = pad + Math.floor(i / cols) * (cellH + gap);
+        const open = t.status === 'Open';
+        ctx.fillStyle = open ? '#ffffff' : '#000080';   // booked colour
+        ctx.fillRect(x, y, cellW, cellH);
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+        ctx.fillStyle = open ? '#111827' : '#ffffff';
+        ctx.fillText(String(t.number), x + cellW / 2, y + cellH / 2 + 1);
+    });
+
+    const d = new Date();
+    const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#374151';
+    ctx.fillText(`${dateStr} — Housie Pro — ${appState.activeEventName}`, W / 2, H - pad - footerH / 2 + 6);
+
+    return canvas;
+}
+
+document.getElementById('shareGridBtn').addEventListener('click', async () => {
     try {
-        const canvas = await html2canvas(container, { scale: 2 });
-        document.body.removeChild(container);
-        canvas.toBlob(async (blob) => {
-            const fileName = `${appState.activeEvent}_Grid.jpg`;
-            const file = new File([blob], fileName, { type: 'image/jpeg' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try { await navigator.share({ files: [file], title: 'Housie Chart' }); } catch (e) {}
-            } else {
-                const link = document.createElement('a');
-                link.download = fileName; link.href = canvas.toDataURL('image/jpeg', 0.9); link.click();
+        const canvas = drawGridCanvas();
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+        if (!blob) throw new Error('Could not create image');
+
+        const fileName = `${appState.activeEvent}_Grid.jpg`;
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: 'Housie Chart' });
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error('Share failed:', e);
             }
-            hideSpinner();
-        }, 'image/jpeg', 0.9);
-    } catch (err) { hideSpinner(); if(document.body.contains(container)) document.body.removeChild(container); }
+        } else {
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+        }
+    } catch (err) {
+        console.error('Grid export failed:', err);
+    }
 });
