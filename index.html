@@ -391,6 +391,17 @@
                 <button class="tab-btn" data-filter="twoTicket">Pair (2)</button>
                 <button class="tab-btn" data-filter="halfSet">Half Set (3)</button>
                 <button class="tab-btn" data-filter="set">Full Set (6)</button>
+                <button class="tab-btn" data-filter="booked">Booked</button>
+             </div>
+             <div class="range-bar" id="bookedRangeBar">
+                <span class="range-label">Group:</span>
+                <button class="range-btn active" data-range="all">All</button>
+                <button class="range-btn" data-range="1-100">1-100</button>
+                <button class="range-btn" data-range="101-200">101-200</button>
+                <button class="range-btn" data-range="201-300">201-300</button>
+                <button class="range-btn" data-range="301-400">301-400</button>
+                <button class="range-btn" data-range="401-500">401-500</button>
+                <button class="range-btn" data-range="501-600">501-600</button>
              </div>
              
              <div id="ticketGrid" class="ticket-grid"></div>
@@ -424,8 +435,10 @@
                   <option value="name">Customer Name</option>
                   <option value="status">Status</option>
                   <option value="modified">Last Modified</option>
+                  <option value="first">First Update</option>
                 </select>
                 <button class="btn btn-ghost" id="exportLedgerBtn" style="padding: 8px 12px;"><i data-lucide="download"></i> Export</button>
+                <button class="btn btn-ghost" id="advancedExportBtn" style="padding: 8px 12px;"><i data-lucide="list-checks"></i> Advanced Export</button>
               </div>
             </div>
             <div class="data-table-wrap">
@@ -637,6 +650,48 @@
     <div style="display:flex; gap: 10px; margin-top: 20px;">
       <button class="btn btn-ghost" id="pinConfirmCancelBtn" style="flex:1;">Cancel</button>
       <button class="btn btn-primary" id="pinConfirmSubmitBtn" style="flex:1;">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="advExportModal" class="modal-overlay">
+  <div class="modal-box" style="max-width: 560px; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <h2 style="font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px;"><i data-lucide="list-checks"></i> Advanced Export</h2>
+      <button class="btn btn-ghost" id="advExportClose" style="padding: 4px; border: none;"><i data-lucide="x"></i></button>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+      <input type="text" id="advExportSearch" class="form-input" placeholder="Search name or phone" style="padding: 8px 12px; flex: 1; min-width: 140px;">
+      <span style="font-size: 12px; color: var(--text3); font-weight: 600;">Sort By:</span>
+      <select id="advExportSort" class="form-input" style="padding: 8px 12px; width: auto;">
+        <option value="nameAsc">Name (A-Z)</option>
+        <option value="nameDesc">Name (Z-A)</option>
+        <option value="ticketsDesc">Total Tickets (High-Low)</option>
+        <option value="ticketsAsc">Total Tickets (Low-High)</option>
+        <option value="number">Ticket Number</option>
+        <option value="amountDesc">Amount (High-Low)</option>
+        <option value="first">First Update</option>
+        <option value="modified">Last Modified</option>
+      </select>
+      <button class="btn btn-ghost" id="advExportSelectAll" style="padding: 8px 12px; font-size: 12px;">Select All</button>
+      <button class="btn btn-ghost" id="advExportClear" style="padding: 8px 12px; font-size: 12px;">Clear</button>
+    </div>
+
+    <div id="advExportList" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg3);"></div>
+    <p style="font-size: 13px; color: var(--text2); margin: 10px 0;">Selected: <strong id="advExportCount" style="color: var(--accent2);">0 names / 0 tickets</strong></p>
+
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text2); margin-bottom: 16px;">
+      <span style="font-weight: 600; color: var(--text3);">Include:</span>
+      <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="advColTickets" checked style="accent-color: var(--accent);"> Ticket Numbers</label>
+      <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="advColPhone" checked style="accent-color: var(--accent);"> Phone</label>
+      <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="advColAmount" style="accent-color: var(--accent);"> Amount</label>
+      <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="advColStatus" style="accent-color: var(--accent);"> Status</label>
+    </div>
+
+    <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+      <button class="btn btn-ghost" id="advExportCopyBtn"><i data-lucide="copy"></i> Copy Text</button>
+      <button class="btn btn-primary" id="advExportCsvBtn"><i data-lucide="download"></i> Download CSV</button>
     </div>
   </div>
 </div>

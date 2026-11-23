@@ -258,9 +258,12 @@ function renderTicketGrid() {
     grid.innerHTML = '';
     
     const filter = appState.currentFilter;
+    const bookedRange = getBookedRange();
+    const rangeBar = document.getElementById('bookedRangeBar');
+    if (rangeBar) rangeBar.style.display = (filter === 'booked') ? 'flex' : 'none';
 
     // ✨ FIXED: "Individual" view now rigidly locks into exactly 15 Columns!
-    if (filter === 'all') {
+    if (filter === 'all' || filter === 'booked') {
         grid.style.display = 'grid';
         grid.style.gridTemplateColumns = 'repeat(15, 1fr)';
         grid.style.gap = '4px'; 
@@ -272,6 +275,11 @@ function renderTicketGrid() {
     }
     
     appState.tickets.forEach((ticket, index) => {
+        if (filter === 'booked') { // Booked tab: hide open tickets, apply the selected number group
+            if (ticket.status === 'Open') return;
+            const n = Number(ticket.number);
+            if (n < bookedRange.min || n > bookedRange.max) return;
+        }
         const box = document.createElement('div');
         box.className = `ticket-box status-${ticket.status.toLowerCase()} t-${ticket.status.toLowerCase()}`;
         box.innerText = ticket.number;
@@ -295,7 +303,7 @@ function applyGroupingStyles(element, num) {
     const filter = appState.currentFilter;
     element.style.marginRight = "0px"; 
     
-    if (filter === 'all') return; 
+    if (filter === 'all' || filter === 'booked') return; 
     if (num % 12 === 0) return; 
 
     if (filter === 'set' && num % 6 === 0) element.style.marginRight = "18px";
@@ -355,6 +363,23 @@ function updateUISelection() {
         if (floatBtn) floatBtn.style.display = 'none';
     }
 }
+
+// ─── 🔢 BOOKED TAB: number-group sub-filter (All / 1-100 / 101-200 / ...) ───
+appState.bookedRange = 'all';
+function getBookedRange() {
+    const r = appState.bookedRange || 'all';
+    if (r === 'all') return { min: -Infinity, max: Infinity };
+    const [min, max] = r.split('-').map(Number);
+    return { min, max };
+}
+document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        appState.bookedRange = this.getAttribute('data-range');
+        renderTicketGrid();
+    });
+});
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -532,7 +557,7 @@ function renderLedger() {
             if (!grouped[key]) {
                 grouped[key] = {
                     tickets: [], originalName: t.customer, phone: t.phone,
-                    status: t.status, payment: t.payment || "Cash", totalAmount: 0, modifiedAt: 0,
+                    status: t.status, payment: t.payment || "Cash", totalAmount: 0, modifiedAt: 0, firstAt: 0,
                     mixedStatus: false, mixedPayment: false
                 };
             }
@@ -546,6 +571,7 @@ function renderLedger() {
             if ((t.payment || "Cash") !== g.payment) g.mixedPayment = true;
             const tMod = t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0;
             if (tMod > g.modifiedAt) g.modifiedAt = tMod;
+            if (tMod && (!g.firstAt || tMod < g.firstAt)) g.firstAt = tMod;
         });
 
         displayData = Object.values(grouped).map(g => ({
@@ -553,7 +579,7 @@ function renderLedger() {
             name: g.originalName, phone: g.phone,
             status: g.mixedStatus ? 'Mixed' : g.status,
             payment: g.mixedPayment ? 'Mixed' : g.payment,
-            amount: g.totalAmount.toFixed(2), modifiedAt: g.modifiedAt,
+            amount: g.totalAmount.toFixed(2), modifiedAt: g.modifiedAt, firstAt: g.firstAt,
             mixed: g.mixedStatus || g.mixedPayment
         }));
     } else {
@@ -562,6 +588,7 @@ function renderLedger() {
             name: t.customer, phone: t.phone, status: t.status, payment: t.payment || "Cash",
             amount: parseFloat(t.amount || 0).toFixed(2),
             modifiedAt: t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0,
+            firstAt: t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0,
             mixed: false
         }));
     }
@@ -579,6 +606,12 @@ function renderLedger() {
         if (sortType === 'name') return a.name.localeCompare(b.name);
         if (sortType === 'status') return a.status.localeCompare(b.status);
         if (sortType === 'modified') return b.modifiedAt - a.modifiedAt;
+        if (sortType === 'first') { // oldest update first; rows with no timestamp go last
+            if (!a.firstAt && !b.firstAt) return a.sortTicket - b.sortTicket;
+            if (!a.firstAt) return 1;
+            if (!b.firstAt) return -1;
+            return a.firstAt - b.firstAt || a.sortTicket - b.sortTicket;
+        }
         return 0;
     });
 
@@ -636,6 +669,177 @@ function renderLedger() {
 document.getElementById('combineNamesToggle').addEventListener('change', renderLedger);
 document.getElementById('ledgerSortSelect').addEventListener('change', renderLedger);
 document.getElementById('ledgerSearchInput').addEventListener('input', renderLedger);
+
+// ─── 📤 ADVANCED EXPORT: pick names → Sl.No, ticket numbers, total tickets ───
+let advCustomers = [];
+
+function advEsc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function buildAdvCustomers() {
+    const grouped = {};
+    appState.tickets.filter(t => t.status !== 'Open').forEach(t => {
+        const name = (t.customer || '').toString().trim() || '(No name)';
+        const phone = (t.phone || '').toString().trim();
+        const key = name.toLowerCase() + '|' + phone;
+        if (!grouped[key]) grouped[key] = { name, phone, tickets: [], amount: 0, statuses: [], firstAt: 0, lastAt: 0 };
+        const g = grouped[key];
+        g.tickets.push(Number(t.number));
+        g.amount += parseFloat(t.amount || 0);
+        if (!g.statuses.includes(t.status)) g.statuses.push(t.status);
+        const tMod = t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0;
+        if (tMod > g.lastAt) g.lastAt = tMod;
+        if (tMod && (!g.firstAt || tMod < g.firstAt)) g.firstAt = tMod;
+    });
+    const sortType = document.getElementById('advExportSort').value;
+    return Object.values(grouped)
+        .map(g => { g.tickets.sort((a, b) => a - b); return g; })
+        .sort((a, b) => {
+            const byName = a.name.localeCompare(b.name);
+            switch (sortType) {
+                case 'nameDesc': return -byName;
+                case 'ticketsDesc': return (b.tickets.length - a.tickets.length) || byName;
+                case 'ticketsAsc': return (a.tickets.length - b.tickets.length) || byName;
+                case 'number': return a.tickets[0] - b.tickets[0];
+                case 'amountDesc': return (b.amount - a.amount) || byName;
+                case 'first':
+                    if (!a.firstAt && !b.firstAt) return byName;
+                    if (!a.firstAt) return 1;
+                    if (!b.firstAt) return -1;
+                    return (a.firstAt - b.firstAt) || byName;
+                case 'modified': return (b.lastAt - a.lastAt) || byName;
+                default: return byName;
+            }
+        });
+}
+
+function advCheckedCustomers() {
+    return Array.from(document.querySelectorAll('#advExportList .adv-chk:checked')).map(c => advCustomers[Number(c.dataset.idx)]);
+}
+
+function updateAdvCount() {
+    const sel = advCheckedCustomers();
+    const total = sel.reduce((n, g) => n + g.tickets.length, 0);
+    document.getElementById('advExportCount').innerText = `${sel.length} names / ${total} tickets`;
+}
+
+function renderAdvList() {
+    const list = document.getElementById('advExportList');
+    const prev = new Set(advCheckedCustomers().map(g => g.name.toLowerCase() + '|' + g.phone));
+    advCustomers = buildAdvCustomers();
+    list.innerHTML = advCustomers.map((g, i) => `
+        <label class="adv-row" data-search="${advEsc((g.name + ' ' + g.phone).toLowerCase())}" style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:13px;">
+            <input type="checkbox" class="adv-chk" data-idx="${i}" ${prev.has(g.name.toLowerCase() + '|' + g.phone) ? 'checked' : ''} style="accent-color: var(--accent);">
+            <span style="flex:1; color: var(--text); font-weight:600;">${advEsc(g.name)}<span style="font-family: var(--mono); font-weight:400; color: var(--text3); margin-left:8px;">${advEsc(g.phone)}</span></span>
+            <span style="font-family: var(--mono); color: var(--accent2); font-weight:700;">${g.tickets.length}</span>
+        </label>`).join('') || '<p style="padding:16px; text-align:center; color: var(--text3); margin:0;">No booked tickets yet.</p>';
+    list.querySelectorAll('.adv-chk').forEach(c => c.addEventListener('change', updateAdvCount));
+    applyAdvSearch();
+    updateAdvCount();
+}
+
+function applyAdvSearch() {
+    const term = document.getElementById('advExportSearch').value.trim().toLowerCase();
+    document.querySelectorAll('#advExportList .adv-row').forEach(r => {
+        r.style.display = (!term || r.dataset.search.includes(term)) ? 'flex' : 'none';
+    });
+}
+
+function setAdvVisibleChecked(state) {
+    document.querySelectorAll('#advExportList .adv-row').forEach(r => {
+        if (r.style.display !== 'none') r.querySelector('.adv-chk').checked = state;
+    });
+    updateAdvCount();
+}
+
+// Builds the export table from the ticked names + chosen columns
+function buildAdvExportTable() {
+    const sel = advCheckedCustomers();
+    if (sel.length === 0) { alert('Select at least one name to export.'); return null; }
+    const inc = {
+        tickets: document.getElementById('advColTickets').checked,
+        phone: document.getElementById('advColPhone').checked,
+        amount: document.getElementById('advColAmount').checked,
+        status: document.getElementById('advColStatus').checked
+    };
+    const headers = ['Sl.No', 'Name'];
+    if (inc.phone) headers.push('Phone');
+    if (inc.tickets) headers.push('Ticket Numbers');
+    headers.push('Total Tickets');
+    if (inc.amount) headers.push('Amount');
+    if (inc.status) headers.push('Status');
+
+    let grandTickets = 0, grandAmount = 0;
+    const rows = sel.map((g, i) => {
+        grandTickets += g.tickets.length; grandAmount += g.amount;
+        const r = [i + 1, g.name];
+        if (inc.phone) r.push(g.phone);
+        if (inc.tickets) r.push(g.tickets.join(', '));
+        r.push(g.tickets.length);
+        if (inc.amount) r.push(g.amount.toFixed(2));
+        if (inc.status) r.push(g.statuses.join(' / '));
+        return r;
+    });
+    const totalRow = ['', `TOTAL (${sel.length} names)`];
+    if (inc.phone) totalRow.push('');
+    if (inc.tickets) totalRow.push('');
+    totalRow.push(grandTickets);
+    if (inc.amount) totalRow.push(grandAmount.toFixed(2));
+    if (inc.status) totalRow.push('');
+    return { headers, rows, totalRow, sel, inc, grandTickets, grandAmount };
+}
+
+document.getElementById('advancedExportBtn').addEventListener('click', () => {
+    if (!appState.tickets.some(t => t.status !== 'Open')) return alert('No booked tickets to export yet.');
+    document.getElementById('advExportSearch').value = '';
+    renderAdvList();
+    document.getElementById('advExportModal').classList.add('open');
+    lucide.createIcons();
+});
+document.getElementById('advExportClose').addEventListener('click', () => document.getElementById('advExportModal').classList.remove('open'));
+document.getElementById('advExportModal').addEventListener('click', (e) => { if (e.target.id === 'advExportModal') e.target.classList.remove('open'); });
+document.getElementById('advExportSearch').addEventListener('input', applyAdvSearch);
+document.getElementById('advExportSort').addEventListener('change', renderAdvList);
+document.getElementById('advExportSelectAll').addEventListener('click', () => setAdvVisibleChecked(true));
+document.getElementById('advExportClear').addEventListener('click', () => setAdvVisibleChecked(false));
+
+document.getElementById('advExportCsvBtn').addEventListener('click', () => {
+    const t = buildAdvExportTable();
+    if (!t) return;
+    downloadCSV(
+        `${appState.activeEventName || 'event'}_selected_names_${new Date().toISOString().slice(0, 10)}.csv`,
+        t.headers, [...t.rows, t.totalRow]
+    );
+});
+
+document.getElementById('advExportCopyBtn').addEventListener('click', async () => {
+    const t = buildAdvExportTable();
+    if (!t) return;
+    const lines = t.sel.map((g, i) => {
+        let line = `${i + 1}. ${g.name}`;
+        if (t.inc.phone && g.phone) line += ` (${g.phone})`;
+        line += ` - ${g.tickets.length} ticket${g.tickets.length === 1 ? '' : 's'}`;
+        if (t.inc.tickets) line += `: ${g.tickets.join(', ')}`;
+        if (t.inc.amount) line += ` | ₹${g.amount.toFixed(2)}`;
+        if (t.inc.status) line += ` | ${g.statuses.join(' / ')}`;
+        return line;
+    });
+    lines.push('', `Total: ${t.sel.length} names, ${t.grandTickets} tickets` + (t.inc.amount ? `, ₹${t.grandAmount.toFixed(2)}` : ''));
+    const text = lines.join('\n');
+    const btn = document.getElementById('advExportCopyBtn');
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (_) { alert('Copy failed — please use Download CSV.'); }
+        document.body.removeChild(ta);
+    }
+    const old = btn.innerHTML;
+    btn.innerText = 'Copied ✓';
+    setTimeout(() => { btn.innerHTML = old; lucide.createIcons(); }, 1500);
+});
 
 // ─── 📸 SHARE GRID AS JPG (drawn straight onto a canvas — no html2canvas) ───
 function drawGridCanvas() {
