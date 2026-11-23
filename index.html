@@ -402,6 +402,12 @@
                 <button class="range-btn" data-range="301-400">301-400</button>
                 <button class="range-btn" data-range="401-500">401-500</button>
                 <button class="range-btn" data-range="501-600">501-600</button>
+                <span style="flex-basis: 100%; height: 0;"></span>
+                <span class="range-label">Updated From:</span>
+                <select id="bookedFromSel" class="form-input" style="padding: 4px 8px; font-size: 12px; width: auto; max-width: 220px;"></select>
+                <span class="range-label">To:</span>
+                <select id="bookedToSel" class="form-input" style="padding: 4px 8px; font-size: 12px; width: auto; max-width: 220px;"></select>
+                <button class="range-btn" id="bookedUpdReset">Reset</button>
              </div>
              
              <div id="ticketGrid" class="ticket-grid"></div>
@@ -691,6 +697,7 @@
 
     <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
       <button class="btn btn-ghost" id="advExportCopyBtn"><i data-lucide="copy"></i> Copy Text</button>
+      <button class="btn btn-ghost" id="advExportJpgBtn"><i data-lucide="image"></i> Download JPG</button>
       <button class="btn btn-primary" id="advExportCsvBtn"><i data-lucide="download"></i> Download CSV</button>
     </div>
   </div>

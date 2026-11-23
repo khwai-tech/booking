@@ -261,6 +261,12 @@ function renderTicketGrid() {
     const bookedRange = getBookedRange();
     const rangeBar = document.getElementById('bookedRangeBar');
     if (rangeBar) rangeBar.style.display = (filter === 'booked') ? 'flex' : 'none';
+    let updSpan = null;
+    if (filter === 'booked') {
+        const updList = getBookedUpdateList();
+        refreshBookedUpdateDropdowns(updList);
+        updSpan = getBookedUpdateSpan(updList);
+    }
 
     // ✨ FIXED: "Individual" view now rigidly locks into exactly 15 Columns!
     if (filter === 'all' || filter === 'booked') {
@@ -279,6 +285,10 @@ function renderTicketGrid() {
             if (ticket.status === 'Open') return;
             const n = Number(ticket.number);
             if (n < bookedRange.min || n > bookedRange.max) return;
+            if (updSpan) {
+                const p = updSpan.pos[bookedCustKey(ticket)];
+                if (p === undefined || p < updSpan.from || p > updSpan.to) return;
+            }
         }
         const box = document.createElement('div');
         box.className = `ticket-box status-${ticket.status.toLowerCase()} t-${ticket.status.toLowerCase()}`;
@@ -366,6 +376,55 @@ function updateUISelection() {
 
 // ─── 🔢 BOOKED TAB: number-group sub-filter (All / 1-100 / 101-200 / ...) ───
 appState.bookedRange = 'all';
+appState.bookedFrom = '';
+appState.bookedTo = '';
+
+// Booked tab: "Updated From name → To name" filter. Dropdowns list customers ordered by modified time (oldest → newest).
+function bookedCustKey(t) {
+    return ((t.customer || '').toString().trim() || '(No name)').toLowerCase() + '|' + (t.phone || '').toString().trim();
+}
+function getBookedUpdateList() {
+    const m = {};
+    appState.tickets.forEach(t => {
+        if (t.status === 'Open') return;
+        const k = bookedCustKey(t);
+        const mod = t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0;
+        if (!m[k]) m[k] = { key: k, name: (t.customer || '').toString().trim() || '(No name)', lastAt: 0 };
+        if (mod > m[k].lastAt) m[k].lastAt = mod;
+    });
+    return Object.values(m).sort((a, b) => {
+        if (!a.lastAt && !b.lastAt) return a.name.localeCompare(b.name);
+        if (!a.lastAt) return 1;
+        if (!b.lastAt) return -1;
+        return (a.lastAt - b.lastAt) || a.name.localeCompare(b.name);
+    });
+}
+function refreshBookedUpdateDropdowns(list) {
+    const keys = new Set(list.map(c => c.key));
+    if (!keys.has(appState.bookedFrom)) appState.bookedFrom = '';
+    if (!keys.has(appState.bookedTo)) appState.bookedTo = '';
+    const fmt = ms => ms ? new Date(ms).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'no time';
+    const opts = (first) => `<option value="">${first}</option>` + list.map(c =>
+        `<option value="${advEsc(c.key)}">${advEsc(c.name)} · ${fmt(c.lastAt)}</option>`).join('');
+    const f = document.getElementById('bookedFromSel'), t = document.getElementById('bookedToSel');
+    if (!f || !t) return;
+    f.innerHTML = opts('First (oldest)');
+    t.innerHTML = opts('Last (newest)');
+    f.value = appState.bookedFrom;
+    t.value = appState.bookedTo;
+}
+function getBookedUpdateSpan(list) {
+    if (!appState.bookedFrom && !appState.bookedTo) return null;
+    const pos = {};
+    list.forEach((c, i) => { pos[c.key] = i; });
+    let from = appState.bookedFrom ? pos[appState.bookedFrom] : 0;
+    let to = appState.bookedTo ? pos[appState.bookedTo] : list.length - 1;
+    if (from > to) [from, to] = [to, from];
+    return { pos, from, to };
+}
+document.getElementById('bookedFromSel').addEventListener('change', function() { appState.bookedFrom = this.value; renderTicketGrid(); });
+document.getElementById('bookedToSel').addEventListener('change', function() { appState.bookedTo = this.value; renderTicketGrid(); });
+document.getElementById('bookedUpdReset').addEventListener('click', () => { appState.bookedFrom = ''; appState.bookedTo = ''; renderTicketGrid(); });
 function getBookedRange() {
     const r = appState.bookedRange || 'all';
     if (r === 'all') return { min: -Infinity, max: Infinity };
@@ -839,6 +898,105 @@ document.getElementById('advExportCopyBtn').addEventListener('click', async () =
     const old = btn.innerHTML;
     btn.innerText = 'Copied ✓';
     setTimeout(() => { btn.innerHTML = old; lucide.createIcons(); }, 1500);
+});
+
+// Draws the advanced-export table straight onto a canvas (no html2canvas needed)
+function drawAdvTableCanvas(t) {
+    const FONT = '"Plus Jakarta Sans", Arial, sans-serif';
+    const pad = 20, cellPadX = 10, cellPadY = 8, lineH = 20;
+    const meas = document.createElement('canvas').getContext('2d');
+
+    const ticketCol = t.headers.indexOf('Ticket Numbers');
+    const centerCols = new Set(['Sl.No', 'Total Tickets', 'Amount']);
+    const all = [t.headers, ...t.rows, t.totalRow].map(r => r.map(c => String(c)));
+
+    // column widths (ticket numbers column wraps at 360px, others capped at 260px)
+    meas.font = `600 14px ${FONT}`;
+    const colW = t.headers.map((h, ci) => {
+        let w = 0;
+        all.forEach((r, ri) => {
+            meas.font = `${ri === 0 || ri === all.length - 1 ? '700' : '500'} 14px ${FONT}`;
+            const txt = r[ci];
+            w = Math.max(w, ci === ticketCol ? Math.min(meas.measureText(txt).width, 360) : Math.min(meas.measureText(txt).width, 260));
+        });
+        return Math.ceil(w) + cellPadX * 2;
+    });
+
+    const wrap = (txt, maxW) => {
+        const parts = txt.split(', '); const lines = []; let cur = '';
+        parts.forEach(p => {
+            const test = cur ? cur + ', ' + p : p;
+            if (cur && meas.measureText(test).width > maxW) { lines.push(cur + ','); cur = p; } else cur = test;
+        });
+        if (cur) lines.push(cur);
+        return lines.length ? lines : [''];
+    };
+
+    const cells = all.map((r, ri) => {
+        meas.font = `${ri === 0 || ri === all.length - 1 ? '700' : '500'} 14px ${FONT}`;
+        return r.map((txt, ci) => ci === ticketCol && ri > 0 && ri < all.length - 1 ? wrap(txt, colW[ci] - cellPadX * 2) : [txt]);
+    });
+    const rowH = cells.map(r => Math.max(...r.map(c => c.length)) * lineH + cellPadY * 2);
+
+    const titleH = 58;
+    const tableW = colW.reduce((a, b) => a + b, 0);
+    const W = Math.max(tableW + pad * 2, 360);
+    const H = pad * 2 + titleH + rowH.reduce((a, b) => a + b, 0);
+    const scale = H > 6000 ? 1 : 2;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale; canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'middle';
+
+    const d = new Date();
+    const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#111827'; ctx.font = `800 18px ${FONT}`;
+    ctx.fillText(`Housie Pro — ${appState.activeEventName || ''}`, pad, pad + 14);
+    ctx.fillStyle = '#4b5563'; ctx.font = `500 13px ${FONT}`;
+    ctx.fillText(`${dateStr}  •  ${t.sel.length} names  •  ${t.grandTickets} tickets`, pad, pad + 38);
+
+    let y = pad + titleH;
+    all.forEach((r, ri) => {
+        const isHead = ri === 0, isTotal = ri === all.length - 1;
+        ctx.fillStyle = isHead ? '#1f2937' : isTotal ? '#e5e7eb' : (ri % 2 ? '#ffffff' : '#f3f4f6');
+        ctx.fillRect(pad, y, tableW, rowH[ri]);
+        let x = pad;
+        r.forEach((_, ci) => {
+            ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+            ctx.strokeRect(x + 0.5, y + 0.5, colW[ci] - 1, rowH[ri] - 1);
+            ctx.fillStyle = isHead ? '#ffffff' : '#111827';
+            ctx.font = `${isHead || isTotal ? '700' : '500'} 14px ${FONT}`;
+            const center = centerCols.has(t.headers[ci]);
+            ctx.textAlign = center ? 'center' : 'left';
+            const tx = center ? x + colW[ci] / 2 : x + cellPadX;
+            cells[ri][ci].forEach((line, li) => ctx.fillText(line, tx, y + cellPadY + lineH / 2 + li * lineH));
+            x += colW[ci];
+        });
+        y += rowH[ri];
+    });
+    return canvas;
+}
+
+document.getElementById('advExportJpgBtn').addEventListener('click', async () => {
+    const t = buildAdvExportTable();
+    if (!t) return;
+    try {
+        const canvas = drawAdvTableCanvas(t);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+        if (!blob) throw new Error('Could not create image');
+        const link = document.createElement('a');
+        link.download = `${appState.activeEventName || 'event'}_selected_names_${new Date().toISOString().slice(0, 10)}.jpg`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    } catch (err) {
+        console.error('Advanced export JPG failed:', err);
+        alert('Could not create the JPG. Try fewer names or use Download CSV.');
+    }
 });
 
 // ─── 📸 SHARE GRID AS JPG (drawn straight onto a canvas — no html2canvas) ───
