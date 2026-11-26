@@ -601,6 +601,12 @@ function renderLedger() {
     }
 
     const combine = document.getElementById('combineNamesToggle').checked;
+    // "Separate by Booking Time" only makes sense while combining
+    const splitToggle = document.getElementById('splitTimeToggle');
+    splitToggle.disabled = !combine;
+    document.getElementById('splitTimeLabel').style.opacity = combine ? '1' : '0.45';
+    const splitTime = combine && splitToggle.checked;
+    const clusterMap = splitTime ? assignBookingClusters(bookedTickets) : null;
     const sortType = document.getElementById('ledgerSortSelect').value;
     const searchTerm = document.getElementById('ledgerSearchInput').value.trim().toLowerCase();
     let displayData = [];
@@ -612,7 +618,7 @@ function renderLedger() {
         bookedTickets.forEach(t => {
             const nameKey = t.customer.trim().toLowerCase();
             if (!nameKey) return;
-            const key = nameKey + '|' + (t.phone || '').trim();
+            const key = nameKey + '|' + (t.phone || '').trim() + (splitTime ? '|' + clusterMap.get(String(t.number)) : '');
             if (!grouped[key]) {
                 grouped[key] = {
                     tickets: [], originalName: t.customer, phone: t.phone,
@@ -639,7 +645,7 @@ function renderLedger() {
             status: g.mixedStatus ? 'Mixed' : g.status,
             payment: g.mixedPayment ? 'Mixed' : g.payment,
             amount: g.totalAmount.toFixed(2), modifiedAt: g.modifiedAt, firstAt: g.firstAt,
-            mixed: g.mixedStatus || g.mixedPayment
+            mixed: g.mixedStatus || g.mixedPayment, splitTime
         }));
     } else {
         displayData = bookedTickets.map(t => ({
@@ -689,7 +695,7 @@ function renderLedger() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td data-label="Ticket(s)"><strong style="font-family: var(--mono); color: var(--text);">${row.displayTicket}</strong></td>
-            <td data-label="Name">${row.name}</td>
+            <td data-label="Name">${row.name}${row.splitTime && row.firstAt ? `<div style="font-size:11px; color: var(--text3); font-weight:500;">Booked ${fmtBookingTime(row.firstAt)}</div>` : ''}</td>
             <td data-label="Phone" style="font-family: var(--mono); color: var(--text3);">${row.phone}</td>
             <td data-label="Status"><span class="status-badge ${badgeClass}" title="${row.mixed ? 'This customer\'s tickets have different statuses — turn off Combine to see each one' : ''}">${row.status}</span></td>
             <td data-label="Payment">${row.payment}</td>
@@ -726,8 +732,40 @@ function renderLedger() {
 }
 
 document.getElementById('combineNamesToggle').addEventListener('change', renderLedger);
+document.getElementById('splitTimeToggle').addEventListener('change', renderLedger);
 document.getElementById('ledgerSortSelect').addEventListener('change', renderLedger);
 document.getElementById('ledgerSearchInput').addEventListener('input', renderLedger);
+
+// ─── 🕒 Shared: split one customer's tickets into separate bookings by time ───
+// Tickets of the same name+phone whose update times are within this window count as ONE booking.
+const BOOKING_TIME_WINDOW_MS = 60 * 1000;
+function assignBookingClusters(tickets) {
+    const byCust = {};
+    tickets.forEach(t => {
+        const k = bookedCustKey(t);
+        if (!byCust[k]) byCust[k] = [];
+        byCust[k].push(t);
+    });
+    const map = new Map(); // ticket number -> booking index for that customer
+    Object.values(byCust).forEach(list => {
+        const sorted = list
+            .map(t => ({ t, ms: t.modifiedAt ? new Date(t.modifiedAt).getTime() : 0 }))
+            .sort((a, b) => a.ms - b.ms || Number(a.t.number) - Number(b.t.number));
+        let cluster = 0, prev = null;
+        sorted.forEach(({ t, ms }) => {
+            if (prev !== null && (ms - prev) > BOOKING_TIME_WINDOW_MS) cluster++;
+            map.set(String(t.number), cluster);
+            prev = ms;
+        });
+    });
+    return map;
+}
+function fmtBookingTime(ms) {
+    return ms ? new Date(ms).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+}
+function formatINR(n) {
+    return '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
 
 // ─── 📤 ADVANCED EXPORT: pick names → Sl.No, ticket numbers, total tickets ───
 let advCustomers = [];
@@ -738,11 +776,15 @@ function advEsc(s) {
 
 function buildAdvCustomers() {
     const grouped = {};
-    appState.tickets.filter(t => t.status !== 'Open').forEach(t => {
+    const split = document.getElementById('advSplitTime').checked;
+    const bookedAll = appState.tickets.filter(t => t.status !== 'Open');
+    const clusterMap = split ? assignBookingClusters(bookedAll) : null;
+    bookedAll.forEach(t => {
         const name = (t.customer || '').toString().trim() || '(No name)';
         const phone = (t.phone || '').toString().trim();
-        const key = name.toLowerCase() + '|' + phone;
-        if (!grouped[key]) grouped[key] = { name, phone, tickets: [], amount: 0, statuses: [], firstAt: 0, lastAt: 0 };
+        const baseKey = name.toLowerCase() + '|' + phone;
+        const key = baseKey + (split ? '|' + clusterMap.get(String(t.number)) : '');
+        if (!grouped[key]) grouped[key] = { baseKey, name, phone, split, tickets: [], amount: 0, statuses: [], firstAt: 0, lastAt: 0 };
         const g = grouped[key];
         g.tickets.push(Number(t.number));
         g.amount += parseFloat(t.amount || 0);
@@ -785,12 +827,12 @@ function updateAdvCount() {
 
 function renderAdvList() {
     const list = document.getElementById('advExportList');
-    const prev = new Set(advCheckedCustomers().map(g => g.name.toLowerCase() + '|' + g.phone));
+    const prev = new Set(advCheckedCustomers().map(g => g.baseKey));
     advCustomers = buildAdvCustomers();
     list.innerHTML = advCustomers.map((g, i) => `
         <label class="adv-row" data-search="${advEsc((g.name + ' ' + g.phone).toLowerCase())}" style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:13px;">
-            <input type="checkbox" class="adv-chk" data-idx="${i}" ${prev.has(g.name.toLowerCase() + '|' + g.phone) ? 'checked' : ''} style="accent-color: var(--accent);">
-            <span style="flex:1; color: var(--text); font-weight:600;">${advEsc(g.name)}<span style="font-family: var(--mono); font-weight:400; color: var(--text3); margin-left:8px;">${advEsc(g.phone)}</span></span>
+            <input type="checkbox" class="adv-chk" data-idx="${i}" ${prev.has(g.baseKey) ? 'checked' : ''} style="accent-color: var(--accent);">
+            <span style="flex:1; color: var(--text); font-weight:600;">${advEsc(g.name)}<span style="font-family: var(--mono); font-weight:400; color: var(--text3); margin-left:8px;">${advEsc(g.phone)}</span>${g.split && g.firstAt ? `<span style="display:block; font-size:11px; font-weight:500; color: var(--text3);">Booked ${fmtBookingTime(g.firstAt)}</span>` : ''}</span>
             <span style="font-family: var(--mono); color: var(--accent2); font-weight:700;">${g.tickets.length}</span>
         </label>`).join('') || '<p style="padding:16px; text-align:center; color: var(--text3); margin:0;">No booked tickets yet.</p>';
     list.querySelectorAll('.adv-chk').forEach(c => c.addEventListener('change', updateAdvCount));
@@ -822,7 +864,9 @@ function buildAdvExportTable() {
         amount: document.getElementById('advColAmount').checked,
         status: document.getElementById('advColStatus').checked
     };
+    const split = document.getElementById('advSplitTime').checked;
     const headers = ['Sl.No', 'Name'];
+    if (split) headers.push('Booking Time');
     if (inc.phone) headers.push('Phone');
     if (inc.tickets) headers.push('Ticket Numbers');
     headers.push('Total Tickets');
@@ -833,6 +877,7 @@ function buildAdvExportTable() {
     const rows = sel.map((g, i) => {
         grandTickets += g.tickets.length; grandAmount += g.amount;
         const r = [i + 1, g.name];
+        if (split) r.push(fmtBookingTime(g.firstAt));
         if (inc.phone) r.push(g.phone);
         if (inc.tickets) r.push(g.tickets.join(', '));
         r.push(g.tickets.length);
@@ -841,12 +886,13 @@ function buildAdvExportTable() {
         return r;
     });
     const totalRow = ['', `TOTAL (${sel.length} names)`];
+    if (split) totalRow.push('');
     if (inc.phone) totalRow.push('');
     if (inc.tickets) totalRow.push('');
     totalRow.push(grandTickets);
     if (inc.amount) totalRow.push(grandAmount.toFixed(2));
     if (inc.status) totalRow.push('');
-    return { headers, rows, totalRow, sel, inc, grandTickets, grandAmount };
+    return { headers, rows, totalRow, sel, inc, split, grandTickets, grandAmount };
 }
 
 document.getElementById('advancedExportBtn').addEventListener('click', () => {
@@ -860,6 +906,7 @@ document.getElementById('advExportClose').addEventListener('click', () => docume
 document.getElementById('advExportModal').addEventListener('click', (e) => { if (e.target.id === 'advExportModal') e.target.classList.remove('open'); });
 document.getElementById('advExportSearch').addEventListener('input', applyAdvSearch);
 document.getElementById('advExportSort').addEventListener('change', renderAdvList);
+document.getElementById('advSplitTime').addEventListener('change', renderAdvList);
 document.getElementById('advExportSelectAll').addEventListener('click', () => setAdvVisibleChecked(true));
 document.getElementById('advExportClear').addEventListener('click', () => setAdvVisibleChecked(false));
 
@@ -877,6 +924,7 @@ document.getElementById('advExportCopyBtn').addEventListener('click', async () =
     if (!t) return;
     const lines = t.sel.map((g, i) => {
         let line = `${i + 1}. ${g.name}`;
+        if (t.split && g.firstAt) line += ` [${fmtBookingTime(g.firstAt)}]`;
         if (t.inc.phone && g.phone) line += ` (${g.phone})`;
         line += ` - ${g.tickets.length} ticket${g.tickets.length === 1 ? '' : 's'}`;
         if (t.inc.tickets) line += `: ${g.tickets.join(', ')}`;
@@ -998,6 +1046,83 @@ document.getElementById('advExportJpgBtn').addEventListener('click', async () =>
         alert('Could not create the JPG. Try fewer names or use Download CSV.');
     }
 });
+
+// ─── 🏷️ PRINT STICKERS: A4, chosen columns × rows, text auto-sized to fill the sticker WIDTH ───
+// Each sticker: Name / Tickets: <total count> / [Status] ₹Amount   (status hidden when "Booked"; amount hidden when 0)
+function printAdvStickers() {
+    const sel = advCheckedCustomers();
+    if (sel.length === 0) return alert('Select at least one name to print stickers.');
+    // (guarded: still works if an older index.html without these dropdowns is loaded)
+    const colsEl = document.getElementById('advStickerCols'), rowsEl = document.getElementById('advStickerRows');
+    const cols = Number(colsEl && colsEl.value) || 4;
+    const rows = Number(rowsEl && rowsEl.value) || 8;
+    const marginMm = 6, mmPx = 3.7795, pad = 5;
+    const stW = ((210 - marginMm * 2) / cols) * mmPx;
+    const stH = ((297 - marginMm * 2) / rows) * mmPx;
+    const innerW = stW - pad * 2;
+    const innerH = stH - pad * 2;
+
+    // measure text so each line is scaled to fill the sticker width (capped by its share of the height)
+    const mctx = document.createElement('canvas').getContext('2d');
+    const fit = (text, weight, maxFs, minFs) => {
+        mctx.font = `${weight} 100px Arial, Helvetica, sans-serif`;
+        const w = mctx.measureText(text).width || 1;
+        const raw = (innerW / w) * 100 * 0.97;           // 3% safety margin
+        return { fs: Math.max(minFs, Math.min(maxFs, raw)), wrap: raw < minFs };
+    };
+
+    const stickers = sel.map(g => {
+        const shownStatus = g.statuses.filter(s => String(s).trim().toLowerCase() !== 'booked').join(' / ');
+        const amountText = Number(g.amount) > 0 ? formatINR(g.amount) : '';      // hide ₹0
+        const statusLine = [shownStatus, amountText].filter(Boolean).join('  ');
+        const lines = [
+            { cls: 'nm', text: g.name, weight: 800, maxFs: innerH * 0.40, minFs: 10 },
+            { cls: 'tk', text: `Tickets: ${g.tickets.length}`, weight: 700, maxFs: innerH * 0.30, minFs: 10 }
+        ];
+        if (statusLine) lines.push({ cls: 'am', text: statusLine, weight: 800, maxFs: innerH * 0.30, minFs: 10 });
+        return '<div class="st">' + lines.map(l => {
+            const f = fit(l.text, l.weight, l.maxFs, l.minFs);
+            return `<div class="${l.cls}${f.wrap ? ' wrap' : ''}" style="font-size:${f.fs.toFixed(1)}px">${advEsc(l.text)}</div>`;
+        }).join('') + '</div>';
+    });
+
+    const perPage = rows * cols;
+    let pages = '';
+    for (let i = 0; i < stickers.length; i += perPage) {
+        pages += `<div class="page">${stickers.slice(i, i + perPage).join('')}</div>`;
+    }
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Stickers</title><style>
+        @page { size: A4; margin: ${marginMm}mm; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #000; }
+        .page { width: ${210 - marginMm * 2}mm; height: ${297 - marginMm * 2 - 1}mm; display: grid;
+                grid-template-columns: repeat(${cols}, 1fr); grid-template-rows: repeat(${rows}, 1fr);
+                page-break-after: always; break-after: page; }
+        .page:last-child { page-break-after: auto; break-after: auto; }
+        .st { border: 1px dashed #9ca3af; padding: ${pad}px; overflow: hidden; display: flex; flex-direction: column;
+              justify-content: center; align-items: center; text-align: center; gap: 2px; }
+        .nm, .tk, .am { white-space: nowrap; line-height: 1.1; max-width: 100%; }
+        .wrap { white-space: normal; word-break: break-word; }
+        .nm { font-weight: 800; }
+        .tk { font-weight: 700; }
+        .am { font-weight: 800; }
+    </style></head><body>${pages}</body></html>`;
+
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+    document.body.appendChild(frame);
+    frame.onload = () => {
+        setTimeout(() => {
+            try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+            catch (e) { alert('Could not open the print dialog.'); }
+            setTimeout(() => frame.remove(), 60000);
+        }, 300);
+    };
+    frame.srcdoc = html;
+}
+document.getElementById('advStickerBtn').addEventListener('click', printAdvStickers);
 
 // ─── 📸 SHARE GRID AS JPG (drawn straight onto a canvas — no html2canvas) ───
 function drawGridCanvas() {

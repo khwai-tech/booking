@@ -429,10 +429,16 @@
           </div>
           <div class="card-content">
             <div class="ledger-controls">
-              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 600; font-size: 13px; color: var(--accent2);">
-                <input type="checkbox" id="combineNamesToggle" style="accent-color: var(--accent); width: 16px; height: 16px;">
-                Combine Bookings by Name
-              </label>
+              <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 600; font-size: 13px; color: var(--accent2);">
+                  <input type="checkbox" id="combineNamesToggle" style="accent-color: var(--accent); width: 16px; height: 16px;">
+                  Combine Bookings by Name
+                </label>
+                <label id="splitTimeLabel" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 600; font-size: 13px; color: var(--accent2); opacity: 0.45;" title="Turn on Combine Bookings by Name first">
+                  <input type="checkbox" id="splitTimeToggle" disabled style="accent-color: var(--accent); width: 16px; height: 16px;">
+                  Separate by Booking Time
+                </label>
+              </div>
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <input type="text" id="ledgerSearchInput" class="form-input" placeholder="Search name, phone, or ticket #" style="padding: 8px 12px; width: 220px;">
                 <span style="font-size: 12px; color: var(--text3); font-weight: 600;">Sort By:</span>
@@ -687,6 +693,11 @@
     <div id="advExportList" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg3);"></div>
     <p style="font-size: 13px; color: var(--text2); margin: 10px 0;">Selected: <strong id="advExportCount" style="color: var(--accent2);">0 names / 0 tickets</strong></p>
 
+    <div style="display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--text2); margin-bottom: 12px;">
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight: 600; color: var(--accent2);"><input type="checkbox" id="advSplitTime" style="accent-color: var(--accent);"> Separate by Booking Time</label>
+      <span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"><span style="font-weight: 600; color: var(--text3);">Sticker (A4) Columns:</span><select id="advStickerCols" class="form-input" style="padding: 4px 8px; font-size: 12px; width: auto;"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option></select><span style="font-weight: 600; color: var(--text3);">Rows:</span><select id="advStickerRows" class="form-input" style="padding: 4px 8px; font-size: 12px; width: auto;"><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8" selected>8</option><option value="9">9</option><option value="10">10</option><option value="12">12</option></select></span>
+    </div>
+
     <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text2); margin-bottom: 16px;">
       <span style="font-weight: 600; color: var(--text3);">Include:</span>
       <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="advColTickets" checked style="accent-color: var(--accent);"> Ticket Numbers</label>
@@ -697,6 +708,7 @@
 
     <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
       <button class="btn btn-ghost" id="advExportCopyBtn"><i data-lucide="copy"></i> Copy Text</button>
+      <button class="btn btn-ghost" id="advStickerBtn"><i data-lucide="printer"></i> Print Stickers</button>
       <button class="btn btn-ghost" id="advExportJpgBtn"><i data-lucide="image"></i> Download JPG</button>
       <button class="btn btn-primary" id="advExportCsvBtn"><i data-lucide="download"></i> Download CSV</button>
     </div>
